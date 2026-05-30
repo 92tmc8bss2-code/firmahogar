@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FirmaHogar</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+:root{--ink:#1a1410;--paper:#f8f5f0;--cream:#ede8e0;--amber:#c8860a;--amber-l:#f0a928;--amber-d:#9a6508;--muted:#7a6e63;--border:#d4ccc0;--shadow:rgba(26,20,16,0.12);--green:#16a34a;--red:#dc2626;--blue:#1e40af}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh}
+header{background:var(--ink);padding:16px 28px;display:flex;align-items:center;gap:16px;border-bottom:3px solid var(--amber);position:sticky;top:0;z-index:100}
+.logo{font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--paper)}.logo span{color:var(--amber-l)}
+.logo-sub{font-size:.7rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-top:2px}
+.header-right{margin-left:auto;display:flex;gap:10px;align-items:center}
+.view{display:none}.view.active{display:block;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+main{max-width:980px;margin:0 auto;padding:28px 18px}
+h2{font-family:'Playfair Display',serif;font-size:1.55rem;margin-bottom:6px}
+.subtitle{color:var(--muted);font-size:.88rem;margin-bottom:24px}
+/* CARDS */
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:0 2px 10px var(--shadow);margin-bottom:18px}
+.card-header{padding:14px 18px;border-bottom:1px solid var(--cream);background:#fdfcfa;display:flex;align-items:center;gap:10px}
+.card-title{font-family:'Playfair Display',serif;font-size:.98rem}
+.card-body{padding:18px}
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:10px 20px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.87rem;font-weight:600;cursor:pointer;border:none;transition:all .2s;text-decoration:none;white-space:nowrap}
+.btn-primary{background:var(--amber);color:#fff}.btn-primary:hover{background:var(--amber-d);box-shadow:0 4px 14px rgba(200,134,10,.35);transform:translateY(-1px)}
+.btn-outline{background:transparent;color:var(--ink);border:1.5px solid var(--border)}.btn-outline:hover{border-color:var(--amber);color:var(--amber)}
+.btn-ghost{background:transparent;color:var(--muted);padding:8px 14px}.btn-ghost:hover{color:var(--ink);background:var(--cream)}
+.btn-green{background:var(--green);color:#fff}.btn-green:hover{background:#15803d}
+.btn-red{background:var(--red);color:#fff}.btn-red:hover{background:#b91c1c}
+.btn-sm{padding:7px 13px;font-size:.8rem}
+.btn-wa{background:#25D366;color:#fff;border-radius:8px}.btn-wa:hover{background:#128C7E}
+/* INPUTS */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:.78rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.field input,.field select,.field textarea{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.9rem;outline:none;transition:border-color .2s;background:#fff}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--amber)}
+/* UPLOAD */
+.upload-area{border:2px dashed var(--border);border-radius:10px;padding:36px 20px;text-align:center;cursor:pointer;transition:all .2s;background:#fafafa}
+.upload-area:hover,.upload-area.drag{border-color:var(--amber);background:#fffbf4}
+.upload-area .icon{font-size:2.2rem;margin-bottom:10px}
+.upload-area .title{font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:6px}
+.upload-area .sub{font-size:.82rem;color:var(--muted);margin-bottom:14px}
+/* FILES LIST */
+.file-item{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--cream);border-radius:8px;margin-bottom:8px}
+.file-item .fi-name{flex:1;font-size:.88rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-item .fi-size{font-size:.78rem;color:var(--muted);flex-shrink:0}
+/* SIGNERS */
+.signer-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.signer-row input{flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:.88rem;outline:none;transition:border-color .2s}
+.signer-row input:focus{border-color:var(--amber)}
+/* DOC LIST */
+.doc-item{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .2s}
+.doc-item:hover{box-shadow:0 4px 16px var(--shadow);border-color:var(--amber)}
+.doc-icon{font-size:1.8rem;flex-shrink:0}
+.doc-info{flex:1;min-width:0}
+.doc-title{font-weight:600;font-size:.92rem;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.doc-meta{font-size:.78rem;color:var(--muted)}
+.badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:.72rem;font-weight:600}
+.badge-pending{background:#fef3c7;color:#92400e}
+.badge-partial{background:#dbeafe;color:#1e40af}
+.badge-done{background:#dcfce7;color:#166534}
+/* SIGNER STATUS */
+.sig-status{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;margin-bottom:8px;background:var(--cream)}
+.sig-status.done{background:#dcfce7}
+.sig-status-name{font-weight:500;font-size:.88rem;flex:1}
+.sig-status-time{font-size:.76rem;color:var(--muted)}
+/* AUDIT */
+.audit-row{font-size:.8rem;padding:8px 12px;border-bottom:1px solid var(--cream);display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.audit-row:last-child{border-bottom:none}
+.audit-head{background:var(--cream);font-weight:700;font-size:.76rem;text-transform:uppercase;letter-spacing:.05em}
+/* PDF VIEWER */
+.pdf-wrap{background:#ccc;border-radius:10px;padding:14px;display:flex;justify-content:center;min-height:380px;overflow:auto}
+#sign-pdf-container{position:relative;display:inline-block;cursor:crosshair}
+#sign-pdf-canvas{display:block;max-width:100%}
+#sign-overlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
+.sig-sticker{position:absolute;cursor:move;pointer-events:all;border:2px dashed transparent;user-select:none}
+.sig-sticker:hover,.sig-sticker.sel{border-color:var(--amber);border-radius:4px}
+.sig-sticker img{display:block;width:100%;height:100%;object-fit:contain}
+.del-x{display:none;position:absolute;top:-9px;right:-9px;width:20px;height:20px;background:var(--red);border-radius:50%;color:#fff;font-size:12px;align-items:center;justify-content:center;cursor:pointer;border:none;font-weight:700;z-index:10}
+.sig-sticker:hover .del-x,.sig-sticker.sel .del-x{display:flex}
+.rsz{position:absolute;bottom:-6px;right:-6px;width:14px;height:14px;background:var(--amber);border-radius:2px;cursor:se-resize;display:none}
+.sig-sticker:hover .rsz,.sig-sticker.sel .rsz{display:block}
+/* DRAW PAD */
+#sig-pad{display:block;width:100%;height:115px;cursor:crosshair;background:#fefefe;border-radius:6px;border:1.5px solid var(--border);touch-action:none}
+.tabs{display:flex;border-bottom:1px solid var(--border)}
+.tab{flex:1;padding:9px;font-size:.78rem;font-weight:600;text-align:center;cursor:pointer;border:none;background:var(--cream);color:var(--muted);transition:all .2s;text-transform:uppercase;letter-spacing:.04em}
+.tab.on{background:#fff;color:var(--amber);border-bottom:2px solid var(--amber);margin-bottom:-1px}
+.color-row{display:flex;gap:8px;align-items:center;margin:8px 0}
+.swatch{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .15s;flex-shrink:0}
+.swatch.on{border-color:var(--ink);transform:scale(1.2)}
+/* LEGAL */
+.legal-box{background:#fffbf4;border:1px solid #f0d090;border-radius:8px;padding:14px;font-size:.83rem;color:#6b4c08;line-height:1.6;margin-bottom:14px}
+.legal-box strong{color:#92400e}
+.consent-row{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;margin-bottom:14px}
+.consent-row input[type=checkbox]{width:18px;height:18px;margin-top:2px;cursor:pointer;accent-color:var(--green);flex-shrink:0}
+.consent-row label{font-size:.84rem;color:#166534;cursor:pointer;line-height:1.5}
+/* WORKSPACE */
+.workspace{display:flex;gap:18px;align-items:flex-start}
+.pdf-col{flex:1;min-width:0}
+.side-col{width:290px;flex-shrink:0}
+@media(max-width:700px){.workspace{flex-direction:column}.side-col{width:100%}}
+/* STEPS */
+.steps{display:flex;gap:5px;margin-bottom:22px}
+.step{flex:1;height:3px;background:var(--border);border-radius:2px;transition:background .3s}
+.step.on{background:var(--amber)}
+/* LINK BOX */
+.link-box{background:var(--cream);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:.78rem;font-family:monospace;word-break:break-all;position:relative;margin-bottom:8px}
+.link-copy{position:absolute;top:6px;right:6px;background:var(--amber);color:#fff;border:none;border-radius:5px;padding:3px 9px;font-size:.72rem;cursor:pointer;font-weight:600}
+/* TOAST */
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--ink);color:#fff;padding:10px 22px;border-radius:50px;font-size:.84rem;font-weight:500;transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:9999;pointer-events:none;white-space:nowrap;border:1px solid var(--amber)}
+#toast.show{transform:translateX(-50%) translateY(0)}
+/* LOADING */
+#loading{display:none;position:fixed;inset:0;background:rgba(248,245,240,.88);backdrop-filter:blur(4px);z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+#loading.show{display:flex}
+.spin{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--amber);border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:44px 20px;color:var(--muted)}
+.empty-icon{font-size:2.8rem;margin-bottom:10px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:600px){.grid2{grid-template-columns:1fr}}
+.info-box{background:#fffbf4;border:1px solid #f0d090;border-radius:8px;padding:11px 13px;font-size:.83rem;color:#7a5c08;margin-bottom:14px}
+/* OVERDUE */
+.badge-overdue{background:#fee2e2;color:#991b1b}
+.doc-item.overdue{border-left:3px solid var(--red)}
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+.stat-box{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center}
+.stat-num{font-family:'Playfair Display',serif;font-size:1.8rem;color:var(--amber)}
+.stat-label{font-size:.75rem;color:var(--muted);margin-top:2px}
+@media(max-width:500px){.stats-row{grid-template-columns:repeat(2,1fr)}}
+/* SEARCH */
+.search-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.search-bar input{flex:1;padding:9px 14px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.88rem;outline:none;transition:border-color .2s}
+.search-bar input:focus{border-color:var(--amber)}
+.filter-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.ftab{padding:5px 14px;border-radius:20px;font-size:.78rem;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:#fff;color:var(--muted);transition:all .2s}
+.ftab.on{background:var(--amber);color:#fff;border-color:var(--amber)}
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">Firma<span>Hogar</span></div>
+    <div class="logo-sub">Firma electrónica · eIDAS</div>
+  </div>
+  <div class="header-right">
+    <button class="btn btn-ghost" id="btn-home" style="display:none;color:#aaa;font-size:.82rem" onclick="showView('home')">🏠 Inicio</button>
+  </div>
+</header>
+
+<!-- ══ HOME ══ -->
+<div id="view-home" class="view active">
+<main>
+  <h2>Documentos para firmar</h2>
+  <p class="subtitle">Gestiona tus documentos y controla el estado de las firmas</p>
+
+  <!-- Stats -->
+  <div class="stats-row" id="stats-row">
+    <div class="stat-box"><div class="stat-num" id="stat-total">—</div><div class="stat-label">Total</div></div>
+    <div class="stat-box"><div class="stat-num" id="stat-done" style="color:var(--green)">—</div><div class="stat-label">Completados</div></div>
+    <div class="stat-box"><div class="stat-num" id="stat-pending" style="color:var(--amber)">—</div><div class="stat-label">Pendientes</div></div>
+    <div class="stat-box"><div class="stat-num" id="stat-overdue" style="color:var(--red)">—</div><div class="stat-label">Sin completar +7d</div></div>
+  </div>
+
+  <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+    <button class="btn btn-primary" onclick="showView('nuevo')">＋ Nuevo documento</button>
+    <button class="btn btn-outline" onclick="cargarDocs()">↻ Actualizar</button>
+  </div>
+
+  <!-- Search -->
+  <div class="search-bar">
+    <input type="text" id="search-input" placeholder="🔍 Buscar por título o firmante..." oninput="filtrarDocs()">
+  </div>
+
+  <!-- Category filters -->
+  <div class="filter-tabs" id="filter-tabs">
+    <div class="ftab on" data-cat="todos" onclick="setFiltro(this)">Todos</div>
+    <div class="ftab" data-cat="Contrato" onclick="setFiltro(this)">Contratos</div>
+    <div class="ftab" data-cat="Finiquito" onclick="setFiltro(this)">Finiquitos</div>
+    <div class="ftab" data-cat="Anexo" onclick="setFiltro(this)">Anexos</div>
+    <div class="ftab" data-cat="Otro" onclick="setFiltro(this)">Otros</div>
+    <div class="ftab" data-cat="pendiente" onclick="setFiltro(this)">⏳ Pendientes</div>
+    <div class="ftab" data-cat="completado" onclick="setFiltro(this)">✅ Completados</div>
+  </div>
+
+  <div id="doc-list"><div class="empty"><div class="empty-icon">📋</div><p>Cargando...</p></div></div>
+</main>
+</div>
+
+<!-- ══ NUEVO ══ -->
+<div id="view-nuevo" class="view">
+<main>
+  <h2>Nuevo documento</h2>
+  <p class="subtitle">Sube uno o varios PDFs, añade firmantes y define dónde firman</p>
+  <div class="steps"><div class="step on" id="s1"></div><div class="step" id="s2"></div><div class="step" id="s3"></div><div class="step" id="s4"></div></div>
+
+  <div class="card">
+    <div class="card-header"><span>📄</span><span class="card-title">1. Título y categoría</span></div>
+    <div class="card-body">
+      <div class="field"><label>Título del documento</label><input type="text" id="doc-title" placeholder="Ej: Contrato empleada hogar – María García"></div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div class="field" style="flex:1;min-width:140px">
+          <label>Categoría</label>
+          <select id="doc-category">
+            <option value="Contrato">Contrato</option>
+            <option value="Finiquito">Finiquito</option>
+            <option value="Anexo">Anexo</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </div>
+        <div class="field" style="flex:1;min-width:140px">
+          <label>Enlace caduca en</label>
+          <select id="doc-expiry">
+            <option value="7">7 días</option>
+            <option value="15" selected>15 días</option>
+            <option value="30">30 días</option>
+            <option value="60">60 días</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span>📂</span><span class="card-title">2. Archivos PDF <span style="font-size:.75rem;color:var(--muted)">(puedes añadir varios)</span></span></div>
+    <div class="card-body">
+      <div class="upload-area" id="upload-area" onclick="document.getElementById('pdf-files-input').click()">
+        <div class="icon">📂</div>
+        <div class="title">Selecciona los PDFs</div>
+        <div class="sub">Arrastra aquí o haz clic · Puedes subir varios a la vez</div>
+        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();document.getElementById('pdf-files-input').click()">Elegir archivos</button>
+        <input type="file" id="pdf-files-input" accept=".pdf" multiple style="display:none" onchange="archivosSeleccionados(this.files)">
+      </div>
+      <div id="files-list" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span>👥</span><span class="card-title">3. Firmantes</span></div>
+    <div class="card-body">
+      <div id="signers-list"></div>
+      <button class="btn btn-outline btn-sm" onclick="addSigner()">＋ Añadir firmante</button>
+    </div>
+  </div>
+
+  <!-- PASO 4: Posición de firma -->
+  <div class="card" id="card-position" style="display:none">
+    <div class="card-header"><span>📍</span><span class="card-title">4. Define dónde firma cada persona</span></div>
+    <div class="card-body">
+      <div class="info-box">Selecciona el documento y haz clic en el PDF para marcar la zona de firma. Puedes definir una posición diferente por archivo y firmante.</div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+        <div class="field" style="flex:1;min-width:140px;margin-bottom:0">
+          <label>Firmante</label>
+          <select id="pos-signer-select" onchange="posActualizar()"></select>
+        </div>
+        <div class="field" style="flex:1;min-width:140px;margin-bottom:0">
+          <label>Archivo</label>
+          <select id="pos-file-select" onchange="posCargarPDF()"></select>
+        </div>
+        <div class="field" style="flex:1;min-width:80px;margin-bottom:0">
+          <label>Página</label>
+          <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
+            <button class="btn btn-ghost btn-sm" onclick="posChangePage(-1)">◀</button>
+            <span id="pos-page-info" style="font-size:.83rem;min-width:40px;text-align:center">1/1</span>
+            <button class="btn btn-ghost btn-sm" onclick="posChangePage(1)">▶</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:#ddd;border-radius:10px;padding:12px;display:flex;justify-content:center;min-height:300px;position:relative;overflow:auto">
+        <div id="pos-pdf-container" style="position:relative;display:inline-block;cursor:crosshair">
+          <canvas id="pos-pdf-canvas"></canvas>
+          <div id="pos-overlay" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none"></div>
+        </div>
+      </div>
+      <p style="font-size:.78rem;color:var(--muted);margin-top:8px;text-align:center">Haz clic en el PDF para marcar la zona · Arrastra para mover · Asa naranja para redimensionar</p>
+      <div id="pos-summary" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+    <button class="btn btn-ghost" onclick="showView('home')">← Cancelar</button>
+    <button class="btn btn-primary" onclick="crearDocumento()">Crear y generar enlaces →</button>
+  </div>
+</main>
+</div>
+
+<!-- ══ DETALLE ══ -->
+<div id="view-detalle" class="view">
+<main>
+  <button class="btn btn-ghost" style="margin-bottom:18px" onclick="showView('home')">← Volver</button>
+  <h2 id="det-title">Documento</h2>
+  <p class="subtitle" id="det-meta"></p>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="card-header"><span>✍️</span><span class="card-title">Estado de firmas</span></div>
+      <div class="card-body" id="det-signers"></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span>📲</span><span class="card-title">Enviar por WhatsApp</span></div>
+      <div class="card-body" id="det-links"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span>📋</span><span class="card-title">Registro de auditoría <span class="tag-eidas">eIDAS</span></span></div>
+    <div class="card-body">
+      <p style="font-size:.8rem;color:var(--muted);margin-bottom:12px">Evidencias electrónicas de cada firma: nombre, IP, timestamp y consentimiento expreso.</p>
+      <div id="audit-table"></div>
+      <button class="btn btn-outline btn-sm" style="margin-top:10px" onclick="descargarAuditoria()">⬇ Descargar log auditoría (.txt)</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span>⬇️</span><span class="card-title">Descargar PDFs</span></div>
+    <div class="card-body" id="det-downloads"></div>
+  </div>
+</main>
+</div>
+
+<!-- ══ FIRMAR (página pública) ══ -->
+<div id="view-firmar" class="view">
+<main>
+  <div class="card">
+    <div class="card-header"><span>📄</span><span class="card-title" id="sign-doc-title">Documento para firmar</span></div>
+    <div class="card-body">
+      <div class="info-box" id="sign-info">Cargando...</div>
+
+      <!-- Identificación firmante -->
+      <div id="sign-id-section">
+        <div class="field"><label>Tu nombre completo <span style="color:var(--red)">*</span></label>
+          <input type="text" id="sign-fullname" placeholder="Nombre y apellidos completos">
+        </div>
+        <div class="field"><label>DNI / NIE <span style="color:var(--red)">*</span></label>
+          <input type="text" id="sign-dni" placeholder="Ej: 12345678A">
+        </div>
+
+        <div class="legal-box">
+          <strong>ℹ️ Firma electrónica simple — Reglamento eIDAS (UE 910/2014)</strong><br><br>
+          Al firmar este documento confirmas que eres la persona indicada y aceptas su contenido. Esta firma tiene validez legal conforme al <strong>Reglamento UE 910/2014 (eIDAS)</strong>, la <strong>Ley 6/2020</strong> de Servicios Electrónicos de Confianza y la <strong>Ley 59/2003</strong> de firma electrónica.<br><br>
+          Se registrarán como evidencia: tu nombre completo, dirección IP, fecha y hora exacta de la firma, y tu consentimiento expreso.
+        </div>
+
+        <div style="background:#fef9f0;border:1px solid #e8d5a0;border-radius:8px;padding:14px;margin-bottom:14px;font-size:.82rem;color:#5c4a1a;line-height:1.6">
+          <strong>🔒 Información sobre Protección de Datos (RGPD · LOPDGDD)</strong><br><br>
+          <b>Responsable:</b> AsisteHogar (Petra Borondo Martín) · CIF/NIF del responsable.<br>
+          <b>Finalidad:</b> Gestión y archivo de contratos y documentos laborales en el ámbito del empleo del hogar.<br>
+          <b>Legitimación:</b> Ejecución de relación contractual (art. 6.1.b RGPD) y consentimiento expreso del interesado.<br>
+          <b>Conservación:</b> Durante la vigencia de la relación laboral y hasta 5 años después de su extinción, conforme al art. 30 ET y normativa laboral aplicable.<br>
+          <b>Destinatarios:</b> No se cederán datos a terceros salvo obligación legal.<br>
+          <b>Derechos:</b> Puedes ejercer tus derechos de acceso, rectificación, supresión, limitación, oposición y portabilidad escribiendo a AsisteHogar. También puedes reclamar ante la <b>Agencia Española de Protección de Datos</b> (aepd.es).
+        </div>
+
+        <div class="consent-row">
+          <input type="checkbox" id="sign-consent">
+          <label for="sign-consent"><strong>Consentimiento de firma electrónica:</strong> He leído y entiendo el documento. Acepto firmarlo electrónicamente y consiento el registro de mis datos de firma (nombre, IP, timestamp) como evidencia legal conforme al Reglamento eIDAS.</label>
+        </div>
+        <div class="consent-row" style="margin-bottom:16px">
+          <input type="checkbox" id="sign-privacy">
+          <label for="sign-privacy"><strong>Protección de datos:</strong> He sido informado/a sobre el tratamiento de mis datos personales según el RGPD (UE 2016/679) y la LOPDGDD (LO 3/2018) y consiento el tratamiento descrito para la finalidad indicada.</label>
+        </div>
+        <button class="btn btn-primary" onclick="iniciarFirma()" style="width:100%">Continuar a la firma →</button>
+      </div>
+
+      <!-- Selector de archivo si hay varios -->
+      <div id="sign-file-selector" style="display:none;margin-top:14px">
+        <div class="field"><label>Documento a firmar</label>
+          <select id="sign-file-select" onchange="cambiarArchivo()"></select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="sign-workspace" style="display:none">
+    <div class="workspace">
+      <div class="pdf-col">
+        <div class="card" style="margin-bottom:10px">
+          <div class="card-body" style="padding:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-ghost btn-sm" onclick="signChangePage(-1)">◀</button>
+            <span id="sign-page-info" style="font-size:.83rem;min-width:55px;text-align:center">1/1</span>
+            <button class="btn btn-ghost btn-sm" onclick="signChangePage(1)">▶</button>
+            <span id="sign-pdf-hint" style="font-size:.75rem;color:var(--muted);margin-left:6px"></span>
+          </div>
+        </div>
+        <div class="pdf-wrap">
+          <div id="sign-pdf-container">
+            <canvas id="sign-pdf-canvas"></canvas>
+            <div id="sign-overlay"></div>
+          </div>
+        </div>
+      </div>
+      <div class="side-col">
+        <div class="card" style="margin-bottom:14px">
+          <div class="tabs">
+            <button class="tab on" onclick="sigTab('draw')">✏️ Dibujar</button>
+            <button class="tab" onclick="sigTab('text')">Aa Texto</button>
+          </div>
+          <div id="tab-draw" style="padding:13px">
+            <div class="color-row">
+              <span style="font-size:.74rem;color:var(--muted);font-weight:600">Color:</span>
+              <div class="swatch on" style="background:#1a1410" data-c="#1a1410" onclick="setSC(this)"></div>
+              <div class="swatch" style="background:#1e3a8a" data-c="#1e3a8a" onclick="setSC(this)"></div>
+              <div class="swatch" style="background:#7f1d1d" data-c="#7f1d1d" onclick="setSC(this)"></div>
+            </div>
+            <canvas id="sig-pad"></canvas>
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <button class="btn btn-outline btn-sm" style="flex:1" onclick="clearPad()">🗑 Limpiar</button>
+              <button class="btn btn-primary btn-sm" style="flex:1" onclick="usarFirma('draw')">✔ Usar</button>
+            </div>
+          </div>
+          <div id="tab-text" style="padding:13px;display:none">
+            <input type="text" id="sig-text" placeholder="Tu nombre..." style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:6px;font-family:'Playfair Display',serif;font-size:1.15rem;outline:none;margin-bottom:10px" oninput="updateTextPrev()">
+            <div id="text-prev" style="height:65px;background:#fefefe;border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:1.3rem;margin-bottom:10px;overflow:hidden;padding:6px">Tu firma</div>
+            <button class="btn btn-primary btn-sm" style="width:100%" onclick="usarFirma('text')">✔ Usar</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-body">
+            <div class="info-box" style="margin-bottom:10px;font-size:.8rem">
+              1. Crea tu firma arriba → <b>Usar</b><br>
+              2. Haz clic en el PDF para colocarla<br>
+              3. Arrastra/redimensiona si necesitas<br>
+              4. Pulsa <b>Confirmar firma</b>
+            </div>
+            <button class="btn btn-green" style="width:100%" onclick="confirmarFirma()" id="btn-confirmar" disabled>✓ Confirmar firma</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+
+<!-- ══ OK ══ -->
+<div id="view-ok" class="view">
+<main style="text-align:center;padding-top:56px">
+  <div style="font-size:4rem;margin-bottom:14px">✅</div>
+  <h2>¡Documento firmado!</h2>
+  <p class="subtitle" style="margin-bottom:8px">Tu firma ha quedado registrada correctamente.</p>
+  <p style="font-size:.84rem;color:var(--muted);margin-bottom:24px">Se ha guardado un registro de auditoría con tu IP, timestamp y consentimiento.</p>
+  <div id="ok-download-section">
+    <div class="info-box" style="display:inline-block;text-align:left;max-width:400px">
+      ⏳ En cuanto firmen todas las partes podrás descargar el documento firmado desde este mismo enlace.
+    </div>
+  </div>
+</main>
+</div>
+
+<div id="loading"><div class="spin"></div><span style="font-size:.86rem;color:var(--muted)">Un momento...</span></div>
+<div id="toast"></div>
+
+<script>
+// ══ CONFIG ══
+const SB='https://devoqjelpdoovcmuljly.supabase.co';
+const KEY='sb_publishable_NP4-oMJXl33HrowFqbMXEw_RcTEZk1n';
+const BASE=window.location.href.split('?')[0];
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ══ SUPABASE ══
+const h={'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json'};
+async function sbGet(t,q=''){const r=await fetch(`${SB}/rest/v1/${t}${q}`,{headers:h});return r.json();}
+async function sbPost(t,d){const r=await fetch(`${SB}/rest/v1/${t}`,{method:'POST',headers:{...h,'Prefer':'return=representation'},body:JSON.stringify(d)});return r.json();}
+async function sbPatch(t,id,d){const r=await fetch(`${SB}/rest/v1/${t}?id=eq.${id}`,{method:'PATCH',headers:{...h,'Prefer':'return=representation'},body:JSON.stringify(d)});return r.json();}
+async function uploadFile(path,bytes,mime='application/pdf'){
+  const r=await fetch(`${SB}/storage/v1/object/pdfs/${path}`,{method:'POST',headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':mime},body:bytes});
+  return r.json();
+}
+function pubURL(p){return`${SB}/storage/v1/object/public/pdfs/${p}`;}
+async function getIP(){try{const r=await fetch('https://api.ipify.org?format=json');const d=await r.json();return d.ip||'desconocida';}catch{return'no disponible';}}
+
+// ══ VIEWS ══
+function showView(v){
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  document.getElementById('btn-home').style.display=v==='home'?'none':'';
+  if(v==='home')cargarDocs();
+}
+
+// ══ HOME ══
+let docsCache=[],signersCache=[],filtroActual='todos',searchQuery='';
+
+function setFiltro(el){
+  document.querySelectorAll('.ftab').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');filtroActual=el.dataset.cat;renderDocList();
+}
+function filtrarDocs(){searchQuery=document.getElementById('search-input').value.toLowerCase();renderDocList();}
+
+async function cargarDocs(){
+  const docs=await sbGet('documents','?order=created_at.desc');
+  docsCache=Array.isArray(docs)?docs:[];
+  const signers=await sbGet('signers','?select=*');
+  signersCache=Array.isArray(signers)?signers:[];
+  const now=Date.now();
+  const total=docsCache.length;
+  const done=docsCache.filter(d=>{const ds=signersCache.filter(s=>s.document_id===d.id);return ds.length&&ds.every(s=>s.signed_at);}).length;
+  const overdue=docsCache.filter(d=>{
+    const ds=signersCache.filter(s=>s.document_id===d.id);
+    if(ds.length&&ds.every(s=>s.signed_at))return false;
+    return(now-new Date(d.created_at).getTime())/86400000>7;
+  }).length;
+  document.getElementById('stat-total').textContent=total;
+  document.getElementById('stat-done').textContent=done;
+  document.getElementById('stat-pending').textContent=total-done;
+  document.getElementById('stat-overdue').textContent=overdue;
+  renderDocList();
+}
+
+function renderDocList(){
+  const el=document.getElementById('doc-list');
+  if(!docsCache.length){el.innerHTML='<div class="empty"><div class="empty-icon">📋</div><p>Aún no hay documentos. Crea el primero.</p></div>';return;}
+  const now=Date.now();
+  const filtered=docsCache.filter(doc=>{
+    const ds=signersCache.filter(s=>s.document_id===doc.id);
+    const allSigned=ds.length&&ds.every(s=>s.signed_at);
+    const days=(now-new Date(doc.created_at).getTime())/86400000;
+    const isOverdue=!allSigned&&days>7;
+    if(filtroActual==='completado'&&!allSigned)return false;
+    if(filtroActual==='pendiente'&&allSigned)return false;
+    if(!['todos','completado','pendiente'].includes(filtroActual)&&doc.category!==filtroActual)return false;
+    if(searchQuery){const inT=doc.title.toLowerCase().includes(searchQuery);const inS=ds.some(s=>s.name.toLowerCase().includes(searchQuery));if(!inT&&!inS)return false;}
+    return true;
+  });
+  if(!filtered.length){el.innerHTML='<div class="empty"><div class="empty-icon">🔍</div><p>No hay documentos con estos filtros.</p></div>';return;}
+  el.innerHTML=filtered.map(doc=>{
+    const ds=signersCache.filter(s=>s.document_id===doc.id);
+    const signed=ds.filter(s=>s.signed_at).length,total=ds.length;
+    const allSigned=total&&signed===total;
+    const days=(now-new Date(doc.created_at).getTime())/86400000;
+    const isOverdue=!allSigned&&days>7;
+    const isExpired=doc.expires_at&&new Date(doc.expires_at)<new Date();
+    const badge=allSigned?'<span class="badge badge-done">✅ Completado</span>':isOverdue?`<span class="badge badge-overdue">⚠️ ${Math.floor(days)}d pendiente</span>`:`<span class="badge badge-partial">${signed}/${total} firmados</span>`;
+    const expBadge=isExpired?'<span class="badge" style="background:#fee2e2;color:#991b1b;margin-left:4px">⏱ Expirado</span>':'';
+    const catBadge=doc.category?`<span class="badge" style="background:var(--cream);color:var(--muted);margin-left:4px">${doc.category}</span>`:'';
+    const fecha=new Date(doc.created_at).toLocaleDateString('es-ES');
+    return`<div class="doc-item ${isOverdue?'overdue':''}">
+      <div class="doc-icon">📄</div>
+      <div class="doc-info" onclick="verDetalle('${doc.id}')" style="cursor:pointer">
+        <div class="doc-title">${doc.title}${catBadge}</div>
+        <div class="doc-meta">${fecha} · ${total} firmante(s) ${badge}${expBadge}</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="verDetalle('${doc.id}')">Ver →</button>
+      <button class="btn btn-ghost btn-sm" title="Eliminar" onclick="eliminarDoc('${doc.id}','${doc.title.replace(/'/g,'')}',event)" style="color:var(--red)">🗑</button>
+    </div>`;
+  }).join('');
+}
+
+async function eliminarDoc(docId,title,e){
+  e.stopPropagation();
+  if(!confirm(`¿Eliminar "${title}"?\nEsta acción no se puede deshacer.`))return;
+  loading(true);
+  try{
+    await fetch(`${SB}/rest/v1/signers?document_id=eq.${docId}`,{method:'DELETE',headers:h});
+    await fetch(`${SB}/rest/v1/documents?id=eq.${docId}`,{method:'DELETE',headers:h});
+    docsCache=docsCache.filter(d=>d.id!==docId);
+    signersCache=signersCache.filter(s=>s.document_id!==docId);
+    toast('✓ Documento eliminado');renderDocList();
+  }catch(e){toast('Error eliminando');console.error(e);}
+  finally{loading(false);}
+}
+
+// ══ NUEVO DOC ══
+let pdfFilesData=[];
+let signerCount=0;
+
+const ua=document.getElementById('upload-area');
+ua.addEventListener('dragover',e=>{e.preventDefault();ua.classList.add('drag')});
+ua.addEventListener('dragleave',()=>ua.classList.remove('drag'));
+ua.addEventListener('drop',e=>{e.preventDefault();ua.classList.remove('drag');archivosSeleccionados(e.dataTransfer.files)});
+
+function archivosSeleccionados(files){
+  for(const f of files){
+    if(f.type!=='application/pdf'){toast('Solo se aceptan PDFs');continue;}
+    const reader=new FileReader();
+    reader.onload=e=>{
+      pdfFilesData.push({name:f.name,size:f.size,bytes:e.target.result});
+      renderFilesList();
+      posActualizarSelectores();
+    };
+    reader.readAsArrayBuffer(f);
+  }
+  if(pdfFilesData.length)document.getElementById('s2').classList.add('on');
+}
+
+function renderFilesList(){
+  document.getElementById('files-list').innerHTML=pdfFilesData.map((f,i)=>`
+    <div class="file-item">
+      <span style="font-size:1.4rem">📄</span>
+      <span class="fi-name">${f.name}</span>
+      <span class="fi-size">${(f.size/1024).toFixed(0)} KB</span>
+      <button class="btn btn-ghost btn-sm" onclick="removeFile(${i})" style="padding:4px 8px">✕</button>
+    </div>`).join('');
+}
+
+function removeFile(i){
+  pdfFilesData.splice(i,1);
+  // Remove zones referencing this file index
+  Object.keys(posZones).forEach(k=>{if(k.split('|')[1]==i)delete posZones[k];});
+  renderFilesList();
+  posActualizarSelectores();
+  if(!pdfFilesData.length)document.getElementById('s2').classList.remove('on');
+}
+
+function addSigner(){
+  signerCount++;
+  const div=document.createElement('div');div.className='signer-row';div.id='sr-'+signerCount;
+  div.style.cssText='flex-wrap:wrap;gap:8px;margin-bottom:12px;background:var(--cream);padding:10px;border-radius:8px';
+  div.innerHTML=`
+    <input type="text" placeholder="Nombre del firmante ${signerCount}" id="sn-${signerCount}" style="flex:2;min-width:140px" oninput="posActualizarSelectores()">
+    <input type="tel" placeholder="Teléfono (WhatsApp)" id="sp-${signerCount}" style="flex:2;min-width:140px">
+    <button class="btn btn-ghost btn-sm" onclick="this.parentElement.remove();posActualizarSelectores()" style="flex-shrink:0">✕</button>`;
+  document.getElementById('signers-list').appendChild(div);
+  document.getElementById('s3').classList.add('on');
+  posActualizarSelectores();
+}
+
+// ══ POSITION PICKER ══
+let posPdfDoc=null, posPage=1, posTotalPages=1, posScale=1.3;
+let posZones={}; // key: "signerName|fileIdx|page" → {x,y,w,h,el}
+let posDragging=null;
+
+function posActualizarSelectores(){
+  const names=[...document.querySelectorAll('[id^="sn-"]')].map(i=>i.value.trim()).filter(Boolean);
+  if(!names.length||!pdfFilesData.length){document.getElementById('card-position').style.display='none';return;}
+  document.getElementById('card-position').style.display='';
+  document.getElementById('s4').classList.add('on');
+
+  const ss=document.getElementById('pos-signer-select');
+  const cur=ss.value;
+  ss.innerHTML=names.map(n=>`<option value="${n}">${n}</option>`).join('');
+  if(names.includes(cur))ss.value=cur;
+
+  const fs=document.getElementById('pos-file-select');
+  const curf=fs.value;
+  fs.innerHTML=pdfFilesData.map((f,i)=>`<option value="${i}">${f.name}</option>`).join('');
+  if(curf)fs.value=curf;
+
+  posCargarPDF();
+}
+
+function posActualizar(){ posRenderOverlay(); posMostrarResumen(); }
+
+async function posCargarPDF(){
+  const idx=parseInt(document.getElementById('pos-file-select').value||'0');
+  if(!pdfFilesData[idx])return;
+  loading(true);
+  try{
+    posPdfDoc=await pdfjsLib.getDocument({data:new Uint8Array(pdfFilesData[idx].bytes)}).promise;
+    posTotalPages=posPdfDoc.numPages; posPage=1;
+    await posRenderPage();
+    posRenderOverlay();
+  }catch(e){console.error(e);}
+  finally{loading(false);}
+}
+
+async function posRenderPage(){
+  if(!posPdfDoc)return;
+  const page=await posPdfDoc.getPage(posPage);
+  const vp=page.getViewport({scale:posScale});
+  const canvas=document.getElementById('pos-pdf-canvas');
+  canvas.width=vp.width; canvas.height=vp.height;
+  await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
+  document.getElementById('pos-page-info').textContent=`${posPage}/${posTotalPages}`;
+}
+
+function posChangePage(d){
+  const np=posPage+d;
+  if(np<1||np>posTotalPages)return;
+  posPage=np; posRenderPage(); posRenderOverlay();
+}
+
+function posRenderOverlay(){
+  const ov=document.getElementById('pos-overlay');
+  ov.innerHTML='';
+  const fileIdx=parseInt(document.getElementById('pos-file-select').value||'0');
+  // Show all zones for current file+page
+  Object.entries(posZones).forEach(([key,z])=>{
+    const [sname,fi,pg]=key.split('|');
+    if(parseInt(fi)!==fileIdx||parseInt(pg)!==posPage)return;
+    const el=document.createElement('div');
+    el.style.cssText=`position:absolute;left:${z.x}px;top:${z.y}px;width:${z.w}px;height:${z.h}px;border:2px solid var(--amber);background:rgba(200,134,10,0.12);border-radius:4px;pointer-events:all;cursor:move;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:600;color:var(--amber-d);user-select:none`;
+    el.textContent=sname;
+    // Delete button
+    const dx=document.createElement('button');
+    dx.style.cssText='position:absolute;top:-9px;right:-9px;width:18px;height:18px;background:var(--red);border:none;border-radius:50%;color:#fff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;pointer-events:all';
+    dx.textContent='×';dx.onclick=e=>{e.stopPropagation();delete posZones[key];posRenderOverlay();posMostrarResumen();};
+    el.appendChild(dx);
+    // Resize handle
+    const rh=document.createElement('div');
+    rh.style.cssText='position:absolute;bottom:-5px;right:-5px;width:12px;height:12px;background:var(--amber);border-radius:2px;cursor:se-resize;pointer-events:all';
+    el.appendChild(rh);
+    makePosResize(rh,el,key);
+    makePosDrag(el,key);
+    ov.appendChild(el);
+    z.el=el;
+  });
+}
+
+document.getElementById('pos-pdf-container').addEventListener('click',function(e){
+  if(e.target!==this&&e.target!==document.getElementById('pos-pdf-canvas'))return;
+  const rect=this.getBoundingClientRect();
+  const x=e.clientX-rect.left, y=e.clientY-rect.top;
+  const sname=document.getElementById('pos-signer-select').value;
+  const fileIdx=parseInt(document.getElementById('pos-file-select').value||'0');
+  if(!sname)return;
+  const key=`${sname}|${fileIdx}|${posPage}`;
+  const W=160,H=55;
+  posZones[key]={x:Math.min(Math.max(x-W/2,0),document.getElementById('pos-pdf-canvas').offsetWidth-W),y:Math.min(Math.max(y-H/2,0),document.getElementById('pos-pdf-canvas').offsetHeight-H),w:W,h:H};
+  posRenderOverlay(); posMostrarResumen();
+});
+
+function makePosDrag(el,key){
+  let ox,oy,sx,sy;
+  el.addEventListener('mousedown',e=>{
+    if(e.target.style.cursor==='se-resize'||e.target.tagName==='BUTTON')return;
+    e.preventDefault();ox=posZones[key].x;oy=posZones[key].y;sx=e.clientX;sy=e.clientY;
+    const mv=e=>{
+      const c=document.getElementById('pos-pdf-canvas');
+      const nx=Math.min(Math.max(ox+e.clientX-sx,0),c.offsetWidth-posZones[key].w);
+      const ny=Math.min(Math.max(oy+e.clientY-sy,0),c.offsetHeight-posZones[key].h);
+      posZones[key].x=nx;posZones[key].y=ny;
+      el.style.left=nx+'px';el.style.top=ny+'px';
+    };
+    const up=()=>{document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);};
+    document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
+  });
+}
+
+function makePosResize(handle,el,key){
+  handle.addEventListener('mousedown',e=>{
+    e.preventDefault();e.stopPropagation();
+    const sx=e.clientX,sy=e.clientY,sw=posZones[key].w,sh=posZones[key].h;
+    const mv=e=>{
+      const nw=Math.max(80,sw+e.clientX-sx),nh=Math.max(30,sh+e.clientY-sy);
+      posZones[key].w=nw;posZones[key].h=nh;
+      el.style.width=nw+'px';el.style.height=nh+'px';
+    };
+    const up=()=>{document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);};
+    document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
+  });
+}
+
+function posMostrarResumen(){
+  const keys=Object.keys(posZones);
+  if(!keys.length){document.getElementById('pos-summary').innerHTML='';return;}
+  document.getElementById('pos-summary').innerHTML=`<div style="font-size:.8rem;color:var(--muted);font-weight:600;margin-bottom:6px">Zonas definidas:</div>`+
+    keys.map(k=>{const[sn,fi,pg]=k.split('|');return`<div style="font-size:.8rem;padding:4px 0;border-bottom:1px solid var(--cream)">✓ <b>${sn}</b> — ${pdfFilesData[fi]?.name||'archivo'}, pág. ${pg}</div>`;}).join('');
+}
+
+async function crearDocumento(){
+  const title=document.getElementById('doc-title').value.trim();
+  if(!title){toast('Escribe un título');return;}
+  if(!pdfFilesData.length){toast('Selecciona al menos un PDF');return;}
+  const signerEls=[...document.querySelectorAll('[id^="sn-"]')];
+  const signerData=signerEls.map(el=>{
+    const i=el.id.replace('sn-','');
+    return{name:el.value.trim(),phone:document.getElementById('sp-'+i)?.value.trim()||''};
+  }).filter(s=>s.name);
+  if(!signerData.length){toast('Añade al menos un firmante');return;}
+  const category=document.getElementById('doc-category').value;
+  const expiryDays=parseInt(document.getElementById('doc-expiry').value);
+  const expiresAt=new Date(Date.now()+expiryDays*86400000).toISOString();
+  loading(true);
+  try{
+    const paths=[];
+    for(const f of pdfFilesData){
+      const path=`${Date.now()}_${Math.random().toString(36).slice(2)}_${f.name.replace(/\s/g,'_')}`;
+      await uploadFile(path,f.bytes);
+      paths.push({path,name:f.name});
+    }
+    const [doc]=await sbPost('documents',{title,category,expires_at:expiresAt,pdf_path:paths[0].path,pdf_paths:paths.map(p=>p.path),pdf_names:paths.map(p=>p.name)});
+    for(const s of signerData){
+      const zoneKey=Object.keys(posZones).find(k=>k.startsWith(s.name+'|'));
+      let zoneData={};
+      if(zoneKey){
+        const z=posZones[zoneKey];const[,fi,pg]=zoneKey.split('|');
+        zoneData={preset_x:z.x,preset_y:z.y,preset_w:z.w,preset_h:z.h,preset_page:parseInt(pg),preset_file_idx:parseInt(fi),preset_pdf_path:paths[parseInt(fi)]?.path||paths[0].path};
+      }
+      await sbPost('signers',{document_id:doc.id,name:s.name,phone:s.phone||null,...zoneData});
+    }
+    toast('✓ Documento creado');
+    pdfFilesData=[];signerCount=0;posZones={};
+    document.getElementById('doc-title').value='';
+    document.getElementById('signers-list').innerHTML='';
+    document.getElementById('files-list').innerHTML='';
+    document.getElementById('card-position').style.display='none';
+    ['s1','s2','s3','s4'].forEach((s,i)=>document.getElementById(s).classList.toggle('on',i===0));
+    verDetalle(doc.id);
+  }catch(e){toast('Error: '+e.message);console.error(e);}
+  finally{loading(false);}
+}
+
+// ══ DETALLE ══
+let curDocId=null,curDoc=null,curSigners=[];
+async function verDetalle(docId){
+  loading(true);curDocId=docId;showView('detalle');
+  try{
+    const docs=await sbGet('documents',`?id=eq.${docId}`);
+    curDoc=docs[0];
+    document.getElementById('det-title').textContent=curDoc.title;
+    const fecha=new Date(curDoc.created_at).toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'});
+    document.getElementById('det-meta').textContent=`Creado el ${fecha}`;
+    curSigners=await sbGet('signers',`?document_id=eq.${docId}&order=name.asc`);
+
+    // Signers status
+    document.getElementById('det-signers').innerHTML=curSigners.map(s=>`
+      <div class="sig-status ${s.signed_at?'done':''}">
+        <span style="font-size:1rem">${s.signed_at?'✅':'⏳'}</span>
+        <span class="sig-status-name">${s.name}</span>
+        <span class="sig-status-time">${s.signed_at?new Date(s.signed_at).toLocaleString('es-ES'):'Pendiente'}</span>
+      </div>`).join('');
+
+    // WhatsApp links
+    document.getElementById('det-links').innerHTML=curSigners.map(s=>{
+      const link=`${BASE}?token=${s.token}`;
+      const wa=encodeURIComponent(`Hola ${s.name}, te envío el documento "${curDoc.title}" para que lo firmes digitalmente.\n\nEnlace de firma: ${link}\n\nEste enlace es personal e intransferible.`);
+      const waHref=s.phone?`https://wa.me/${s.phone.replace(/\D/g,'')}?text=${wa}`:`https://wa.me/?text=${wa}`;
+      return`<div style="margin-bottom:14px">
+        <div style="font-size:.78rem;font-weight:600;color:var(--muted);margin-bottom:5px">${s.name} ${s.signed_at?'<span class="badge badge-done">Firmado</span>':''}</div>
+        <div class="link-box">${link}<button class="link-copy" onclick="copyText('${link}')">Copiar</button></div>
+        <a href="${waHref}" target="_blank" class="btn btn-wa btn-sm">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+          Enviar a ${s.name}
+        </a>
+      </div>`;
+    }).join('');
+
+    // Audit table
+    const signed=curSigners.filter(s=>s.signed_at);
+    if(signed.length){
+      document.getElementById('audit-table').innerHTML=`
+        <div class="audit-row audit-head"><span>Firmante</span><span>Fecha y hora</span><span>IP · DNI · Consentimientos</span></div>
+        ${signed.map(s=>`<div class="audit-row">
+          <span><b>${s.signed_fullname||s.name}</b></span>
+          <span>${new Date(s.signed_at).toLocaleString('es-ES')}</span>
+          <span>${s.signer_ip||'—'} · DNI: ${s.signer_dni||'no facilitado'} · eIDAS: ${s.consented?'✓':'—'} · RGPD: ${s.privacy_accepted?'✓':'—'}</span>
+        </div>`).join('')}`;
+    } else {
+      document.getElementById('audit-table').innerHTML='<p style="font-size:.82rem;color:var(--muted)">Aún no hay firmas registradas.</p>';
+    }
+
+    // Downloads
+    const paths=curDoc.pdf_paths||[curDoc.pdf_path];
+    const names=curDoc.pdf_names||[curDoc.pdf_path];
+    document.getElementById('det-downloads').innerHTML=paths.map((p,i)=>`
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+        <span style="font-size:1.3rem">📄</span>
+        <span style="flex:1;font-size:.88rem;font-weight:500">${names[i]||'Documento '+(i+1)}</span>
+        <button class="btn btn-outline btn-sm" onclick="descargarOriginal('${p}','${names[i]||'documento.pdf'}')">Original</button>
+        <button class="btn btn-primary btn-sm" onclick="descargarFirmado('${p}','${names[i]||'documento.pdf'}')">Con firmas</button>
+      </div>`).join('');
+  }catch(e){toast('Error cargando');console.error(e);}
+  finally{loading(false);}
+}
+
+function descargarAuditoria(){
+  const signed=curSigners.filter(s=>s.signed_at);
+  if(!signed.length){toast('No hay firmas aún');return;}
+  let txt=`REGISTRO DE AUDITORÍA DE FIRMAS ELECTRÓNICAS\n`;
+  txt+=`Regulación: Reglamento UE 910/2014 (eIDAS) · Ley 59/2003\n`;
+  txt+=`Documento: ${curDoc.title}\n`;
+  txt+=`Generado: ${new Date().toLocaleString('es-ES')}\n`;
+  txt+=`${'─'.repeat(60)}\n\n`;
+  for(const s of signed){
+    txt+=`FIRMANTE: ${s.signed_fullname||s.name}\n`;
+    txt+=`Nombre en documento: ${s.name}\n`;
+    txt+=`DNI/NIE: ${s.signer_dni||'no facilitado'}\n`;
+    txt+=`Fecha/hora firma: ${new Date(s.signed_at).toLocaleString('es-ES')}\n`;
+    txt+=`Dirección IP: ${s.signer_ip||'no disponible'}\n`;
+    txt+=`Consentimiento eIDAS: ${s.consented?'SÍ':'NO'}\n`;
+    txt+=`Consentimiento RGPD: ${s.privacy_accepted?'SÍ':'NO'}\n`;
+    txt+=`Token único: ${s.token}\n\n`;
+  }
+  const blob=new Blob([txt],{type:'text/plain;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=`auditoria_${curDoc.title.replace(/\s/g,'_')}.txt`;a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function descargarOriginal(path,name){
+  const a=document.createElement('a');a.href=pubURL(path);a.download=name;a.click();
+}
+
+async function descargarFirmado(pdfPath,fileName){
+  loading(true);
+  try{
+    const resp=await fetch(pubURL(pdfPath));
+    const buf=await resp.arrayBuffer();
+    const {PDFDocument}=PDFLib;
+    const doc=await PDFDocument.load(buf);
+    const pjsDoc=await pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;
+    const pages=doc.getPages();
+    for(const s of curSigners){
+      if(!s.signed_at||!s.signature_data||s.sig_pdf_path!==pdfPath)continue;
+      const page=pages[(s.page||1)-1];
+      if(!page)continue;
+      const {width:pW,height:pH}=page.getSize();
+      const pjsPage=await pjsDoc.getPage(s.page||1);
+      const vp=pjsPage.getViewport({scale:1.5});
+      const scX=pW/vp.width,scY=pH/vp.height;
+      const imgBytes=await fetch(s.signature_data).then(r=>r.arrayBuffer());
+      const img=await doc.embedPng(imgBytes);
+      page.drawImage(img,{x:s.x*scX,y:pH-(s.y+s.h)*scY,width:s.w*scX,height:s.h*scY});
+    }
+    const bytes=await doc.save();
+    const blob=new Blob([bytes],{type:'application/pdf'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download='firmado_'+fileName;a.click();
+    URL.revokeObjectURL(url);
+    toast('✓ PDF descargado');
+  }catch(e){toast('Error: '+e.message);console.error(e);}
+  finally{loading(false);}
+}
+
+function copyText(t){
+  navigator.clipboard.writeText(t).then(()=>toast('✓ Enlace copiado')).catch(()=>{
+    const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);toast('✓ Copiado');
+  });
+}
+
+// ══ FIRMA PÚBLICA ══
+let signToken=null,signSigner=null,signDocData=null;
+let signPdfDoc=null,signPage=1,signTotalPages=1,signScale=1.5;
+let signDataURL=null,signMode=null;
+let signStickers=[];
+let drawColor='#1a1410',drawSize=2;
+let signPdfPaths=[],signPdfNames=[],signCurrentPathIdx=0;
+let signerIP='';
+
+async function initSignView(token){
+  loading(true);signToken=token;showView('firmar');
+  document.getElementById('btn-home').style.display='none';
+  try{
+    const signers=await sbGet('signers',`?token=eq.${token}`);
+    if(!signers.length){toast('Enlace no válido');loading(false);return;}
+    signSigner=signers[0];
+    if(signSigner.signed_at){
+      showView('ok');
+      await comprobarTodasFirmas();
+      loading(false);
+      return;
+    }
+    const docs=await sbGet('documents',`?id=eq.${signSigner.document_id}`);
+    signDocData=docs[0];
+    // Check expiry
+    if(signDocData.expires_at&&new Date(signDocData.expires_at)<new Date()){
+      document.getElementById('sign-doc-title').textContent='Enlace caducado';
+      document.getElementById('sign-info').innerHTML='⏱ Este enlace de firma ha caducado. Contacta con AsisteHogar para obtener un nuevo enlace.';
+      loading(false);return;
+    }
+    document.getElementById('sign-doc-title').textContent=signDocData.title;
+    document.getElementById('sign-info').innerHTML=`Hola, estás a punto de firmar el documento <b>"${signDocData.title}"</b>. Por favor, confirma tu identidad.`;
+    signPdfPaths=signDocData.pdf_paths||[signDocData.pdf_path];
+    signPdfNames=signDocData.pdf_names||signPdfPaths.map((_,i)=>`Documento ${i+1}`);
+    // Prefill name
+    document.getElementById('sign-fullname').value=signSigner.name;
+    signerIP=await getIP();
+  }catch(e){toast('Error cargando documento');console.error(e);}
+  finally{loading(false);}
+}
+
+async function iniciarFirma(){
+  const name=document.getElementById('sign-fullname').value.trim();
+  const dni=document.getElementById('sign-dni').value.trim();
+  const consent=document.getElementById('sign-consent').checked;
+  const privacy=document.getElementById('sign-privacy').checked;
+  if(!name){toast('Escribe tu nombre completo');return;}
+  if(!dni){toast('El DNI/NIE es obligatorio');return;}
+  if(!consent){toast('Debes aceptar el consentimiento de firma para continuar');return;}
+  if(!privacy){toast('Debes aceptar la política de protección de datos para continuar');return;}
+  document.getElementById('sign-id-section').style.display='none';
+  document.getElementById('sign-workspace').style.display='';
+  // File selector si hay varios
+  if(signPdfPaths.length>1){
+    document.getElementById('sign-file-selector').style.display='';
+    const sel=document.getElementById('sign-file-select');
+    sel.innerHTML=signPdfPaths.map((p,i)=>`<option value="${i}">${signPdfNames[i]}</option>`).join('');
+  }
+  await cargarPDFParaFirmar(0);
+  initPad();
+}
+
+async function cargarPDFParaFirmar(idx){
+  loading(true);
+  signCurrentPathIdx=idx;
+  try{
+    const url=pubURL(signPdfPaths[idx]);
+    const resp=await fetch(url);
+    const buf=await resp.arrayBuffer();
+    signPdfDoc=await pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;
+    signTotalPages=signPdfDoc.numPages;signPage=1;
+    await signRenderPage();
+  }catch(e){toast('Error cargando PDF');console.error(e);}
+  finally{loading(false);}
+}
+
+function cambiarArchivo(){
+  const idx=parseInt(document.getElementById('sign-file-select').value);
+  signStickers=[];document.getElementById('sign-overlay').innerHTML='';
+  document.getElementById('btn-confirmar').disabled=true;
+  cargarPDFParaFirmar(idx);
+}
+
+async function signRenderPage(){
+  const page=await signPdfDoc.getPage(signPage);
+  const vp=page.getViewport({scale:signScale});
+  const canvas=document.getElementById('sign-pdf-canvas');
+  canvas.width=vp.width;canvas.height=vp.height;
+  await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
+  document.getElementById('sign-page-info').textContent=`${signPage}/${signTotalPages}`;
+  // Show preset zone if defined for this page
+  signShowPresetZone();
+}
+
+function signShowPresetZone(){
+  const ov=document.getElementById('sign-overlay');
+  // Remove any existing preset markers (not stickers)
+  ov.querySelectorAll('.preset-zone').forEach(e=>e.remove());
+  if(!signSigner||!signSigner.preset_x)return;
+  const presetPage=signSigner.preset_page||1;
+  if(presetPage!==signPage)return;
+  // Show zone marker
+  const el=document.createElement('div');
+  el.className='preset-zone';
+  el.style.cssText=`position:absolute;left:${signSigner.preset_x}px;top:${signSigner.preset_y}px;width:${signSigner.preset_w}px;height:${signSigner.preset_h}px;border:2px dashed var(--amber);background:rgba(200,134,10,0.08);border-radius:4px;pointer-events:none;display:flex;align-items:center;justify-content:center`;
+  el.innerHTML=`<span style="font-size:.72rem;color:var(--amber-d);font-weight:600">← Zona de firma</span>`;
+  ov.appendChild(el);
+  // Auto-hint
+  document.getElementById('sign-pdf-hint').textContent='Tu zona de firma está marcada. Dibuja tu firma y pulsa "Usar".';
+}
+
+// PDF click — place sticker. If preset zone defined, snap to it.
+document.getElementById('sign-pdf-container').addEventListener('click',function(e){
+  if(signMode!=='pending')return;
+  let x,y,w,h;
+  if(signSigner&&signSigner.preset_x&&signSigner.preset_page===signPage){
+    // Snap to preset zone
+    x=signSigner.preset_x;y=signSigner.preset_y;w=signSigner.preset_w;h=signSigner.preset_h;
+  } else {
+    const rect=this.getBoundingClientRect();
+    x=e.clientX-rect.left;y=e.clientY-rect.top;w=160;h=60;
+  }
+  placeSignSticker(x,y,signDataURL,w,h);
+  signMode=null;this.style.cursor='default';
+  document.getElementById('btn-confirmar').disabled=false;
+});
+
+function signChangePage(d){const np=signPage+d;if(np<1||np>signTotalPages)return;signPage=np;signRenderPage();}
+
+function placeSignSticker(x,y,dataURL,W,H){
+  W=W||160;H=H||60;
+  const ov=document.getElementById('sign-overlay');
+  const c=document.getElementById('sign-pdf-container');
+  const cw=c.offsetWidth,ch=c.offsetHeight;
+  const sx=Math.min(Math.max(x,0),cw-W),sy=Math.min(Math.max(y,0),ch-H);
+  const idx=signStickers.length;
+  const el=document.createElement('div');el.className='sig-sticker';el.dataset.id=idx;
+  el.style.cssText=`left:${sx}px;top:${sy}px;width:${W}px;height:${H}px;`;
+  const img=document.createElement('img');img.src=dataURL;el.appendChild(img);
+  const dx=document.createElement('button');dx.className='del-x';dx.textContent='×';
+  dx.onclick=e=>{e.stopPropagation();el.remove();signStickers[idx]=null;
+    if(!signStickers.some(Boolean))document.getElementById('btn-confirmar').disabled=true;};
+  el.appendChild(dx);
+  const rh=document.createElement('div');rh.className='rsz';el.appendChild(rh);
+  ov.appendChild(el);
+  signStickers.push({el,x:sx,y:sy,w:W,h:H,dataURL,page:signPage,pathIdx:signCurrentPathIdx});
+  makeDrag(el,idx);makeResize(rh,el,idx);
+}
+
+function makeDrag(el,idx){
+  let ox,oy,sx,sy;
+  el.addEventListener('mousedown',e=>{
+    if(e.target.classList.contains('del-x')||e.target.classList.contains('rsz'))return;
+    e.preventDefault();ox=parseInt(el.style.left);oy=parseInt(el.style.top);sx=e.clientX;sy=e.clientY;
+    el.classList.add('sel');
+    const mv=e=>{const c=document.getElementById('sign-pdf-container');
+      const nx=Math.min(Math.max(ox+e.clientX-sx,0),c.offsetWidth-el.offsetWidth);
+      const ny=Math.min(Math.max(oy+e.clientY-sy,0),c.offsetHeight-el.offsetHeight);
+      el.style.left=nx+'px';el.style.top=ny+'px';if(signStickers[idx]){signStickers[idx].x=nx;signStickers[idx].y=ny;}};
+    const up=()=>{document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);};
+    document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
+  });
+  el.addEventListener('touchstart',e=>{
+    const t=e.touches[0];ox=parseInt(el.style.left);oy=parseInt(el.style.top);sx=t.clientX;sy=t.clientY;
+    const mv=e=>{e.preventDefault();const tt=e.touches[0];const c=document.getElementById('sign-pdf-container');
+      const nx=Math.min(Math.max(ox+tt.clientX-sx,0),c.offsetWidth-el.offsetWidth);
+      const ny=Math.min(Math.max(oy+tt.clientY-sy,0),c.offsetHeight-el.offsetHeight);
+      el.style.left=nx+'px';el.style.top=ny+'px';if(signStickers[idx]){signStickers[idx].x=nx;signStickers[idx].y=ny;}};
+    const up=()=>{document.removeEventListener('touchmove',mv);document.removeEventListener('touchend',up);};
+    document.addEventListener('touchmove',mv,{passive:false});document.addEventListener('touchend',up);
+  },{passive:true});
+}
+
+function makeResize(handle,el,idx){
+  handle.addEventListener('mousedown',e=>{
+    e.preventDefault();e.stopPropagation();
+    const sx=e.clientX,sy=e.clientY,sw=el.offsetWidth,sh=el.offsetHeight;
+    const mv=e=>{const nw=Math.max(60,sw+e.clientX-sx),nh=Math.max(30,sh+e.clientY-sy);
+      el.style.width=nw+'px';el.style.height=nh+'px';if(signStickers[idx]){signStickers[idx].w=nw;signStickers[idx].h=nh;}};
+    const up=()=>{document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);};
+    document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
+  });
+}
+
+async function confirmarFirma(){
+  const valid=signStickers.filter(Boolean);
+  if(!valid.length){toast('Coloca tu firma en el documento');return;}
+  loading(true);
+  try{
+    const s=valid[valid.length-1];
+    const fullname=document.getElementById('sign-fullname').value.trim();
+    const dni=document.getElementById('sign-dni').value.trim();
+    await sbPatch('signers',signSigner.id,{
+      signed_at:new Date().toISOString(),
+      signed_fullname:fullname,
+      signer_dni:dni||null,
+      signature_data:s.dataURL,
+      signer_ip:signerIP,
+      consented:true,
+      privacy_accepted:true,
+      page:s.page,
+      sig_pdf_path:signPdfPaths[s.pathIdx]||signPdfPaths[0],
+      x:s.x,y:s.y,w:s.w,h:s.h
+    });
+    showView('ok');
+    // Check if all signers have signed
+    await comprobarTodasFirmas();
+  }catch(e){toast('Error guardando firma');console.error(e);}
+  finally{loading(false);}
+}
+
+async function comprobarTodasFirmas(){
+  try{
+    const allSigners=await sbGet('signers',`?document_id=eq.${signSigner.document_id}`);
+    const allSigned=allSigners.every(s=>s.signed_at);
+    const section=document.getElementById('ok-download-section');
+    if(allSigned){
+      // Build download buttons for each PDF
+      const docs=await sbGet('documents',`?id=eq.${signSigner.document_id}`);
+      const doc=docs[0];
+      const paths=doc.pdf_paths||[doc.pdf_path];
+      const names=doc.pdf_names||paths.map((_,i)=>`Documento ${i+1}`);
+      section.innerHTML=`
+        <div style="background:#dcfce7;border:1px solid #86efac;border-radius:10px;padding:20px;display:inline-block;max-width:420px">
+          <p style="font-size:.95rem;font-weight:600;color:#166534;margin-bottom:14px">✅ Todas las partes han firmado. Ya puedes descargar el documento.</p>
+          ${paths.map((p,i)=>`<button class="btn btn-green" style="width:100%;margin-bottom:8px" onclick="descargarFirmadoPublico('${p}','${names[i]||'documento.pdf'}','${doc.id}')">⬇ Descargar ${names[i]||'Documento '+(i+1)}</button>`).join('')}
+        </div>`;
+    } else {
+      const pending=allSigners.filter(s=>!s.signed_at).map(s=>s.name).join(', ');
+      section.innerHTML=`<div class="info-box" style="display:inline-block;text-align:left;max-width:400px">
+        ⏳ Falta la firma de: <b>${pending}</b>.<br>En cuanto firmen todas las partes podrás descargar el documento firmado desde este mismo enlace.
+      </div>`;
+    }
+  }catch(e){console.error(e);}
+}
+
+async function descargarFirmadoPublico(pdfPath,fileName,docId){
+  loading(true);
+  try{
+    const signers=await sbGet('signers',`?document_id=eq.${docId}&signed_at=not.is.null`);
+    const resp=await fetch(pubURL(pdfPath));
+    const buf=await resp.arrayBuffer();
+    const {PDFDocument}=PDFLib;
+    const doc=await PDFDocument.load(buf);
+    const pjsDoc=await pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;
+    const pages=doc.getPages();
+    for(const s of signers){
+      if(!s.signature_data||s.sig_pdf_path!==pdfPath)continue;
+      const page=pages[(s.page||1)-1];if(!page)continue;
+      const {width:pW,height:pH}=page.getSize();
+      const pjsPage=await pjsDoc.getPage(s.page||1);
+      const vp=pjsPage.getViewport({scale:1.5});
+      const scX=pW/vp.width,scY=pH/vp.height;
+      const imgBytes=await fetch(s.signature_data).then(r=>r.arrayBuffer());
+      const img=await doc.embedPng(imgBytes);
+      page.drawImage(img,{x:s.x*scX,y:pH-(s.y+s.h)*scY,width:s.w*scX,height:s.h*scY});
+    }
+    const bytes=await doc.save();
+    const blob=new Blob([bytes],{type:'application/pdf'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download='firmado_'+fileName;a.click();
+    URL.revokeObjectURL(url);
+    toast('✓ PDF descargado');
+  }catch(e){toast('Error: '+e.message);console.error(e);}
+  finally{loading(false);}
+}
+
+// ══ PAD ══
+let padDrawing=false,padLX,padLY;
+function initPad(){
+  const c=document.getElementById('sig-pad');const ctx=c.getContext('2d');
+  c.width=c.offsetWidth*devicePixelRatio||270*devicePixelRatio;c.height=115*devicePixelRatio;
+  ctx.scale(devicePixelRatio,devicePixelRatio);ctx.fillStyle='#fefefe';ctx.fillRect(0,0,c.width,c.height);
+  c.addEventListener('mousedown',e=>{padDrawing=true;[padLX,padLY]=pp(e,c);});
+  c.addEventListener('mousemove',e=>{if(!padDrawing)return;pl(e,c);});
+  c.addEventListener('mouseup',()=>padDrawing=false);c.addEventListener('mouseleave',()=>padDrawing=false);
+  c.addEventListener('touchstart',e=>{e.preventDefault();padDrawing=true;[padLX,padLY]=pp(e.touches[0],c);},{passive:false});
+  c.addEventListener('touchmove',e=>{e.preventDefault();if(!padDrawing)return;pl(e.touches[0],c);},{passive:false});
+  c.addEventListener('touchend',()=>padDrawing=false);
+}
+function pp(e,el){const r=el.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top];}
+function pl(e,c){const ctx=c.getContext('2d');const[x,y]=pp(e,c);
+  ctx.beginPath();ctx.moveTo(padLX,padLY);ctx.lineTo(x,y);
+  ctx.strokeStyle=drawColor;ctx.lineWidth=drawSize;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();
+  [padLX,padLY]=[x,y];}
+function clearPad(){const c=document.getElementById('sig-pad');c.getContext('2d').fillStyle='#fefefe';c.getContext('2d').fillRect(0,0,c.offsetWidth,c.offsetHeight);}
+function setSC(el){document.querySelectorAll('#tab-draw .swatch').forEach(s=>s.classList.remove('on'));el.classList.add('on');drawColor=el.dataset.c;}
+function sigTab(t){
+  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('on',(i===0&&t==='draw')||(i===1&&t==='text')));
+  document.getElementById('tab-draw').style.display=t==='draw'?'':'none';
+  document.getElementById('tab-text').style.display=t==='text'?'':'none';
+}
+function updateTextPrev(){const v=document.getElementById('sig-text').value||'Tu firma';document.getElementById('text-prev').textContent=v;}
+function trimCanvas(canvas){
+  const ctx=canvas.getContext('2d');const w=canvas.offsetWidth,h=canvas.offsetHeight;
+  const d=ctx.getImageData(0,0,w*devicePixelRatio,h*devicePixelRatio).data;
+  let mx=w*devicePixelRatio,my=h*devicePixelRatio,ax=0,ay=0;
+  for(let y=0;y<h*devicePixelRatio;y++)for(let x=0;x<w*devicePixelRatio;x++){
+    const i=(y*w*devicePixelRatio+x)*4;
+    if(d[i+3]>10&&(d[i]<240||d[i+1]<240||d[i+2]<240)){if(x<mx)mx=x;if(y<my)my=y;if(x>ax)ax=x;if(y>ay)ay=y;}
+  }
+  if(ax<mx)return null;
+  const pad=8*devicePixelRatio;mx=Math.max(0,mx-pad);my=Math.max(0,my-pad);ax=Math.min(w*devicePixelRatio,ax+pad);ay=Math.min(h*devicePixelRatio,ay+pad);
+  const tc=document.createElement('canvas');tc.width=ax-mx;tc.height=ay-my;
+  tc.getContext('2d').putImageData(canvas.getContext('2d').getImageData(mx,my,ax-mx,ay-my),0,0);
+  return tc.toDataURL('image/png');
+}
+function usarFirma(type){
+  let dataURL;
+  if(type==='draw'){dataURL=trimCanvas(document.getElementById('sig-pad'));if(!dataURL){toast('Dibuja tu firma primero');return;}}
+  else{const text=document.getElementById('sig-text').value.trim();if(!text){toast('Escribe tu firma');return;}
+    const tc=document.createElement('canvas');tc.width=300;tc.height=90;const tctx=tc.getContext('2d');
+    tctx.clearRect(0,0,300,90);tctx.font='bold 52px "Playfair Display",serif';tctx.fillStyle=drawColor;
+    tctx.textBaseline='middle';tctx.fillText(text,8,45);dataURL=tc.toDataURL('image/png');}
+  signDataURL=dataURL;
+  // If preset zone defined for current page, place automatically
+  if(signSigner&&signSigner.preset_x&&signSigner.preset_page===signPage){
+    // Remove previous stickers first
+    signStickers.forEach((s,i)=>{if(s){s.el.remove();signStickers[i]=null;}});
+    placeSignSticker(signSigner.preset_x,signSigner.preset_y,dataURL,signSigner.preset_w,signSigner.preset_h);
+    signMode=null;
+    document.getElementById('sign-pdf-container').style.cursor='default';
+    document.getElementById('btn-confirmar').disabled=false;
+    toast('✓ Firma colocada en la zona indicada');
+  } else if(signSigner&&signSigner.preset_x&&signSigner.preset_page!==signPage){
+    // Navigate to the preset page
+    signPage=signSigner.preset_page;
+    signRenderPage().then(()=>{
+      signStickers.forEach((s,i)=>{if(s){s.el.remove();signStickers[i]=null;}});
+      placeSignSticker(signSigner.preset_x,signSigner.preset_y,dataURL,signSigner.preset_w,signSigner.preset_h);
+      signMode=null;document.getElementById('btn-confirmar').disabled=false;
+      toast('✓ Firma colocada — página '+signPage);
+    });
+  } else {
+    signMode='pending';
+    document.getElementById('sign-pdf-container').style.cursor='crosshair';
+    toast('✓ Haz clic en el PDF para colocar la firma');
+  }
+}
+
+// ══ UTILS ══
+function loading(on){document.getElementById('loading').classList.toggle('show',on);}
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),3200);}
+
+// ══ INIT ══
+// Necesitamos añadir columnas nuevas a Supabase
+async function migrarBD(){
+  // Las columnas extra se añaden automáticamente si no existen, Supabase las ignora si existen
+}
+
+window.addEventListener('load',()=>{
+  addSigner();
+  const token=new URLSearchParams(window.location.search).get('token');
+  if(token)initSignView(token);
+  else showView('home');
+});
+</script>
+</body>
+</html>
