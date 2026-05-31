@@ -462,8 +462,6 @@ h2{font-family:'Playfair Display',serif;font-size:1.55rem;margin-bottom:6px}
 const SB='https://devoqjelpdoovcmuljly.supabase.co';
 const KEY='sb_publishable_NP4-oMJXl33HrowFqbMXEw_RcTEZk1n';
 const BASE=window.location.href.split('?')[0];
-pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
 // ══ SUPABASE ══
 const h={'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json'};
 async function sbGet(t,q=''){const r=await fetch(`${SB}/rest/v1/${t}${q}`,{headers:h});return r.json();}
