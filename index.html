@@ -1274,12 +1274,24 @@ async function migrarBD(){
   // Las columnas extra se añaden automáticamente si no existen, Supabase las ignora si existen
 }
 
-window.addEventListener('load',()=>{
-  addSigner();
-  const token=new URLSearchParams(window.location.search).get('token');
-  if(token)initSignView(token);
-  else showView('home');
-});
+function initApp(){
+  try{
+    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    addSigner();
+    const token=new URLSearchParams(window.location.search).get('token');
+    if(token)initSignView(token);
+    else showView('home');
+  }catch(e){
+    console.error('Init error:',e);
+    document.body.innerHTML='<div style="padding:40px;font-family:sans-serif"><h2>Error al cargar</h2><p>'+e.message+'</p><button onclick="location.reload()">Reintentar</button></div>';
+  }
+}
+
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
 </script>
 </body>
 </html>
