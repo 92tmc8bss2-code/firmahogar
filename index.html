@@ -396,10 +396,10 @@ var drawColor = '#1a1410', signerIP = '';
 var padDrawing = false, padLX, padLY;
 
 // SUPABASE
-var H = {'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json','Accept-Profile':'public','Content-Profile':'public'};
+var H = {'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json','Accept-Profile':'public'};
 function sbGet(t,q){return fetch(SB+'/rest/v1/'+t+(q||''),{headers:H}).then(function(r){return r.json()});}
-function sbPost(t,d){return fetch(SB+'/rest/v1/'+t,{method:'POST',headers:Object.assign({'Prefer':'return=representation'},H),body:JSON.stringify(d)}).then(function(r){return r.json()});}
-function sbPatch(t,id,d){return fetch(SB+'/rest/v1/'+t+'?id=eq.'+id,{method:'PATCH',headers:Object.assign({'Prefer':'return=representation'},H),body:JSON.stringify(d)}).then(function(r){return r.json()});}
+function sbPost(t,d){return fetch(SB+'/rest/v1/'+t,{method:'POST',headers:Object.assign({'Prefer':'return=representation','Content-Profile':'public'},H),body:JSON.stringify(d)}).then(function(r){return r.json()});}
+function sbPatch(t,id,d){return fetch(SB+'/rest/v1/'+t+'?id=eq.'+id,{method:'PATCH',headers:Object.assign({'Prefer':'return=representation','Content-Profile':'public'},H),body:JSON.stringify(d)}).then(function(r){return r.json()});}
 function sbDel(t,q){return fetch(SB+'/rest/v1/'+t+q,{method:'DELETE',headers:H});}
 function upFile(path,bytes){return fetch(SB+'/storage/v1/object/pdfs/'+path,{method:'POST',headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/pdf'},body:bytes}).then(function(r){return r.json()});}
 function pubURL(p){return SB+'/storage/v1/object/public/pdfs/'+p;}
