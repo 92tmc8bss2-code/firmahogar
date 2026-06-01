@@ -401,7 +401,10 @@ function sbGet(t,q){return fetch(SB+'/rest/v1/'+t+(q||''),{headers:H}).then(func
 function sbPost(t,d){return fetch(SB+'/rest/v1/'+t,{method:'POST',headers:Object.assign({'Prefer':'return=representation','Content-Profile':'public'},H),body:JSON.stringify(d)}).then(function(r){return r.json()});}
 function sbPatch(t,id,d){return fetch(SB+'/rest/v1/'+t+'?id=eq.'+id,{method:'PATCH',headers:Object.assign({'Prefer':'return=representation','Content-Profile':'public'},H),body:JSON.stringify(d)}).then(function(r){return r.json()});}
 function sbDel(t,q){return fetch(SB+'/rest/v1/'+t+q,{method:'DELETE',headers:H});}
-function upFile(path,bytes){return fetch(SB+'/storage/v1/object/pdfs/'+path,{method:'POST',headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/pdf'},body:bytes}).then(function(r){return r.json()});}
+function upFile(path,bytes){
+  var blob = new Blob([bytes], {type:'application/pdf'});
+  return fetch(SB+'/storage/v1/object/pdfs/'+path,{method:'POST',headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/pdf'},body:blob}).then(function(r){return r.json();});
+}
 function pubURL(p){return SB+'/storage/v1/object/public/pdfs/'+p;}
 function getIP(){return fetch('https://api.ipify.org?format=json').then(function(r){return r.json();}).then(function(d){return d.ip||'';}).catch(function(){return '';});}
 
@@ -514,7 +517,7 @@ function onFiles(files) {
     (function(f){
       if(f.type!=='application/pdf'){ toast('Solo se aceptan PDFs'); return; }
       var reader = new FileReader();
-      reader.onload = function(e){ pdfFiles.push({name:f.name,size:f.size,bytes:e.target.result}); renderFList(); posUpdateSel(); };
+      reader.onload = function(e){ pdfFiles.push({name:f.name,size:f.size,bytes:e.target.result.slice(0)}); renderFList(); posUpdateSel(); };
       reader.readAsArrayBuffer(f);
     })(files[i]);
   }
