@@ -532,19 +532,7 @@ function addSigner() {
 
 // POS PICKER
 function posUpdateSel() {
-  var names = Array.from(document.querySelectorAll('[id^="sn-"]')).map(function(el){ return el.value.trim(); }).filter(Boolean);
-  if(!names.length || !pdfFiles.length){ document.getElementById('poscard').style.display='none'; return; }
-  document.getElementById('poscard').style.display='';
-  document.getElementById('st4').classList.add('on');
-  var ss = document.getElementById('psel-s');
-  var cv = ss.value;
-  ss.innerHTML = names.map(function(n){ return '<option value="'+n+'">'+n+'</option>'; }).join('');
-  if(names.includes(cv)) ss.value = cv;
-  var fs = document.getElementById('psel-f');
-  var cf = fs.value;
-  fs.innerHTML = pdfFiles.map(function(f,i){ return '<option value="'+i+'">'+f.name+'</option>'; }).join('');
-  if(cf) fs.value = cf;
-  posLoadPDF();
+  // poscard removed - no-op
 }
 
 function posLoad() { posRenderOv(); posSum(); }
