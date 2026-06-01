@@ -195,7 +195,7 @@ h2{font-family:'Playfair Display',serif;font-size:1.5rem;margin-bottom:6px}
 <main>
   <h2>Nuevo documento</h2>
   <p class="sub">Sube PDFs, añade firmantes y define donde firman</p>
-  <div class="steps"><div class="step on" id="st1"></div><div class="step" id="st2"></div><div class="step" id="st3"></div><div class="step" id="st4"></div></div>
+  <div class="steps"><div class="step on" id="st1"></div><div class="step" id="st2"></div><div class="step" id="st3"></div></div>
 
   <div class="card">
     <div class="ch">1. Titulo y categoria</div>
@@ -233,28 +233,6 @@ h2{font-family:'Playfair Display',serif;font-size:1.5rem;margin-bottom:6px}
     <div class="cb">
       <div id="slist"></div>
       <button class="btn bo sm" onclick="addSigner()">+ Añadir firmante</button>
-    </div>
-  </div>
-
-  <div class="card" id="poscard" style="display:none">
-    <div class="ch">4. Define donde firma cada persona</div>
-    <div class="cb">
-      <div class="info">Selecciona firmante y archivo, luego haz clic en el PDF para marcar la zona de firma.</div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
-        <div class="fld" style="flex:1;min-width:130px;margin:0"><label>Firmante</label><select id="psel-s" onchange="posLoad()"></select></div>
-        <div class="fld" style="flex:1;min-width:130px;margin:0"><label>Archivo</label><select id="psel-f" onchange="posLoadPDF()"></select></div>
-        <div class="fld" style="flex:1;min-width:80px;margin:0">
-          <label>Pagina</label>
-          <div style="display:flex;gap:5px;align-items:center;margin-top:5px">
-            <button class="btn bg sm" onclick="posChangePage(-1)">◀</button>
-            <span id="pp-info" style="font-size:.82rem;min-width:38px;text-align:center">1/1</span>
-            <button class="btn bg sm" onclick="posChangePage(1)">▶</button>
-          </div>
-        </div>
-      </div>
-      <div class="ppwrap"><div id="ppdf-cont"><canvas id="ppdf-canvas"></canvas><div id="pov"></div></div></div>
-      <p style="font-size:.76rem;color:var(--muted);margin-top:6px;text-align:center">Haz clic en el PDF para marcar la zona - Arrastra para mover</p>
-      <div id="psum" style="margin-top:10px"></div>
     </div>
   </div>
 
@@ -319,7 +297,7 @@ h2{font-family:'Playfair Display',serif;font-size:1.5rem;margin-bottom:6px}
             <button class="btn bg sm" onclick="signPg(-1)">◀</button>
             <span id="sign-pg" style="font-size:.82rem;min-width:50px;text-align:center">1/1</span>
             <button class="btn bg sm" onclick="signPg(1)">▶</button>
-            <span id="sign-hint" style="font-size:.74rem;color:var(--muted);margin-left:5px">Haz clic en el PDF para colocar la firma</span>
+            <span id="sign-hint" style="font-size:.74rem;color:var(--muted);margin-left:5px">Dibuja tu firma y haz clic en el PDF para colocarla</span>
           </div>
         </div>
         <div class="pdfwrap">
@@ -546,7 +524,7 @@ function rmFile(i) {
 function addSigner() {
   signerCount++;
   var div = document.createElement('div'); div.className='sr'; div.id='sr-'+signerCount;
-  div.innerHTML = '<input type="text" placeholder="Nombre del firmante '+signerCount+'" id="sn-'+signerCount+'" oninput="posUpdateSel()"><input type="tel" placeholder="Telefono WhatsApp" id="sp-'+signerCount+'"><button class="btn bg sm" onclick="this.parentElement.remove();posUpdateSel()" style="flex-shrink:0">✕</button>';
+  div.innerHTML = '<input type="text" placeholder="Nombre del firmante '+signerCount+'" id="sn-'+signerCount+'"><input type="tel" placeholder="Telefono WhatsApp" id="sp-'+signerCount+'"><button class="btn bg sm" onclick="this.parentElement.remove()" style="flex-shrink:0">✕</button>';
   document.getElementById('slist').appendChild(div);
   document.getElementById('st3').classList.add('on');
   posUpdateSel();
@@ -675,10 +653,7 @@ function crearDoc() {
       var addNext = function(j) {
         if(j>=sData.length) return afterSigners(doc);
         var s=sData[j];
-        var zk=Object.keys(posZones).filter(function(k){return k.split('|')[0]===s.name;})[0];
-        var zd={};
-        if(zk){var z=posZones[zk];var p=zk.split('|');zd={preset_x:z.x,preset_y:z.y,preset_w:z.w,preset_h:z.h,preset_page:parseInt(p[2]),preset_pdf_path:paths[parseInt(p[1])]?paths[parseInt(p[1])].path:paths[0].path};}
-        sbPost('signers',Object.assign({document_id:doc.id,name:s.name,phone:s.phone||null},zd)).then(function(){addNext(j+1);}).catch(function(e){toast('Error: '+e.message);loading(false);});
+        sbPost('signers',{document_id:doc.id,name:s.name,phone:s.phone||null}).then(function(){addNext(j+1);}).catch(function(e){toast('Error: '+e.message);loading(false);});
       };
       addNext(0);
     }).catch(function(e){toast('Error: '+e.message);loading(false);});
@@ -781,7 +756,14 @@ function dlSigned(pdfPath,fileName){
             var scX=sz.width/vp.width, scY=sz.height/vp.height;
             return fetch(s.signature_data).then(function(r){return r.arrayBuffer();}).then(function(ib){
               return doc.embedPng(ib).then(function(img){
-                pg.drawImage(img,{x:s.x*scX,y:sz.height-(s.y+s.h)*scY,width:s.w*scX,height:s.h*scY});
+                var imgX = s.x * scX;
+              var imgY = sz.height - (s.y * scY) - (s.h * scY);
+              var imgW = s.w * scX;
+              var imgH = s.h * scY;
+              console.log('PDF size:', sz.width, sz.height, 'Viewport:', vp.width, vp.height, 'scX:', scX, 'scY:', scY);
+              console.log('Sticker x:', s.x, 'y:', s.y, 'w:', s.w, 'h:', s.h);
+              console.log('Drawing at x:', imgX, 'y:', imgY, 'w:', imgW, 'h:', imgH);
+              pg.drawImage(img,{x:imgX, y:imgY, width:imgW, height:imgH});
                 return addSig(i+1);
               });
             });
@@ -854,19 +836,10 @@ function signRenderPage() {
     c.width=vp.width;c.height=vp.height;
     document.getElementById('sign-pg').textContent=signPage+'/'+signTotalPages;
     return pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
-  }).then(function(){showPreset();});
+  });
 }
 
-function showPreset() {
-  document.getElementById('sov').querySelectorAll('.pz').forEach(function(el){el.remove();});
-  if(!signSigner||!signSigner.preset_x) return;
-  if(signSigner.preset_page!==signPage) return;
-  var el=document.createElement('div'); el.className='pz';
-  el.style.cssText='position:absolute;left:'+signSigner.preset_x+'px;top:'+signSigner.preset_y+'px;width:'+signSigner.preset_w+'px;height:'+signSigner.preset_h+'px;border:2px dashed var(--amber);background:rgba(200,134,10,.07);border-radius:4px;pointer-events:none;display:flex;align-items:center;justify-content:center;font-size:.7rem;color:var(--amber3);font-weight:600';
-  el.textContent='Zona de firma';
-  document.getElementById('sov').appendChild(el);
-  document.getElementById('sign-hint').textContent='Dibuja tu firma y pulsa Usar - se colocara automaticamente';
-}
+
 
 function signPg(d){var n=signPage+d;if(n<1||n>signTotalPages)return;signPage=n;signRenderPage();}
 
@@ -967,13 +940,9 @@ function useSig(type){
   else{var t=document.getElementById('sigtxt').value.trim();if(!t){toast('Escribe tu firma');return;}var tc=document.createElement('canvas');tc.width=300;tc.height=90;var tctx=tc.getContext('2d');tctx.clearRect(0,0,300,90);tctx.font='bold 52px serif';tctx.fillStyle=drawColor;tctx.textBaseline='middle';tctx.fillText(t,8,45);url=tc.toDataURL('image/png');}
   signDataURL=url;
   signStickers.forEach(function(s,i){if(s){s.el.remove();signStickers[i]=null;}});
-  if(signSigner&&signSigner.preset_x){
-    var pg=signSigner.preset_page||1;
-    if(pg!==signPage){signPage=pg;signRenderPage().then(function(){placeSticker(signSigner.preset_x,signSigner.preset_y,url,signSigner.preset_w,signSigner.preset_h);document.getElementById('btn-confirm').disabled=false;toast('Firma colocada');});}
-    else{placeSticker(signSigner.preset_x,signSigner.preset_y,url,signSigner.preset_w,signSigner.preset_h);document.getElementById('btn-confirm').disabled=false;toast('Firma colocada');}
-  } else {
-    signMode='pending';document.getElementById('spdf-cont').style.cursor='crosshair';toast('Haz clic en el PDF para colocar la firma');
-  }
+  signMode='pending';
+  document.getElementById('spdf-cont').style.cursor='crosshair';
+  toast('Dibuja tu firma y haz clic en el PDF para colocarla');
 }
 
 function confirmSign(){
@@ -1027,7 +996,7 @@ function dlPublic(pdfPath,fileName,docId){
             if(!s.signature_data||s.sig_pdf_path!==pdfPath)return addSig(i+1);
             var pg=pages[(s.page||1)-1];if(!pg)return addSig(i+1);
             var sz=pg.getSize();
-            return pjsDoc.getPage(s.page||1).then(function(pjsPg){var vp=pjsPg.getViewport({scale:1.5});var scX=sz.width/vp.width,scY=sz.height/vp.height;return fetch(s.signature_data).then(function(r){return r.arrayBuffer();}).then(function(ib){return doc.embedPng(ib).then(function(img){pg.drawImage(img,{x:s.x*scX,y:sz.height-(s.y+s.h)*scY,width:s.w*scX,height:s.h*scY});return addSig(i+1);});});});
+            return pjsDoc.getPage(s.page||1).then(function(pjsPg){var vp=pjsPg.getViewport({scale:1.5});var scX=sz.width/vp.width,scY=sz.height/vp.height;return fetch(s.signature_data).then(function(r){return r.arrayBuffer();}).then(function(ib){return doc.embedPng(ib).then(function(img){pg.drawImage(img,{x:s.x*scX,y:sz.height-(s.y*scY)-(s.h*scY),width:s.w*scX,height:s.h*scY});return addSig(i+1);});});});
           };
           return addSig(0);
         });
