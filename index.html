@@ -403,7 +403,7 @@ function sbPatch(t,id,d){return fetch(SB+'/rest/v1/'+t+'?id=eq.'+id,{method:'PAT
 function sbDel(t,q){return fetch(SB+'/rest/v1/'+t+q,{method:'DELETE',headers:H});}
 function upFile(path,bytes){
   var blob = new Blob([bytes], {type:'application/pdf'});
-  return fetch(SB+'/storage/v1/object/pdfs/'+path,{method:'POST',headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/pdf'},body:blob}).then(function(r){return r.json();});
+  return fetch(SB+'/storage/v1/object/pdfs/'+path,{method:'POST',headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/pdf','x-upsert':'true'},body:blob}).then(function(r){return r.json();});
 }
 function pubURL(p){return SB+'/storage/v1/object/public/pdfs/'+p;}
 function getIP(){return fetch('https://api.ipify.org?format=json').then(function(r){return r.json();}).then(function(d){return d.ip||'';}).catch(function(){return '';});}
@@ -517,7 +517,13 @@ function onFiles(files) {
     (function(f){
       if(f.type!=='application/pdf'){ toast('Solo se aceptan PDFs'); return; }
       var reader = new FileReader();
-      reader.onload = function(e){ pdfFiles.push({name:f.name,size:f.size,bytes:e.target.result.slice(0)}); renderFList(); posUpdateSel(); };
+      reader.onload = function(e){ 
+        var arr = new Uint8Array(e.target.result);
+        var copy = new Uint8Array(arr.length);
+        copy.set(arr);
+        pdfFiles.push({name:f.name,size:f.size,bytes:copy.buffer,uint8:copy}); 
+        renderFList(); posUpdateSel(); 
+      };
       reader.readAsArrayBuffer(f);
     })(files[i]);
   }
@@ -569,8 +575,8 @@ function posLoadPDF() {
   var idx = parseInt(document.getElementById('psel-f').value||'0');
   if(!pdfFiles[idx]) return;
   loading(true);
-  var copy = pdfFiles[idx].bytes.slice(0);
-  pdfjsLib.getDocument({data: new Uint8Array(copy)}).promise.then(function(d) {
+  var copy = pdfFiles[idx].uint8 ? pdfFiles[idx].uint8.slice(0) : new Uint8Array(pdfFiles[idx].bytes.slice(0));
+  pdfjsLib.getDocument({data: copy}).promise.then(function(d) {
     posPdfDoc = d; posTotalPages = d.numPages; posCurPage = 1;
     return posRenderPage();
   }).catch(function(e){ toast('Error PDF: '+e.message); }).finally(function(){ loading(false); });
@@ -654,7 +660,11 @@ function crearDoc() {
     if(i>=pdfFiles.length) return afterUpload();
     var f=pdfFiles[i];
     var path = Date.now()+'_'+Math.random().toString(36).slice(2)+'_'+f.name.replace(/\s/g,'_');
-    upFile(path, f.bytes.slice(0)).then(function(){ paths.push({path:path,name:f.name}); uploadNext(i+1); }).catch(function(e){ toast('Error subiendo: '+e.message); loading(false); });
+    var uploadBytes = f.uint8 ? f.uint8.slice(0) : new Uint8Array(f.bytes.slice(0));
+    upFile(path, uploadBytes).then(function(r){ 
+      console.log('Upload result:', JSON.stringify(r));
+      paths.push({path:path,name:f.name}); uploadNext(i+1); 
+    }).catch(function(e){ toast('Error subiendo: '+e.message); loading(false); });
   };
   function afterUpload() {
     sbPost('documents',{title:title,category:cat,expires_at:expAt,pdf_path:paths[0].path,pdf_paths:paths.map(function(p){return p.path;}),pdf_names:paths.map(function(p){return p.name;})})
