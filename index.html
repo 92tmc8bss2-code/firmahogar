@@ -573,7 +573,8 @@ function posRenderPage() {
 
 function posChangePage(d) { var n=posCurPage+d; if(n<1||n>posTotalPages)return; posCurPage=n; posRenderPage(); }
 
-document.getElementById('ppdf-cont').addEventListener('click', function(e) {
+var ppdfCont = document.getElementById('ppdf-cont');
+if(ppdfCont) ppdfCont.addEventListener('click', function(e) {
   if(e.target!==this && e.target!==document.getElementById('ppdf-canvas')) return;
   var rect = this.getBoundingClientRect();
   var x = e.clientX-rect.left, y = e.clientY-rect.top;
@@ -588,7 +589,7 @@ document.getElementById('ppdf-cont').addEventListener('click', function(e) {
 });
 
 function posRenderOv() {
-  var ov = document.getElementById('pov'); ov.innerHTML='';
+  var ov = document.getElementById('pov'); if(!ov) return; ov.innerHTML='';
   var fi = parseInt(document.getElementById('psel-f').value||'0');
   Object.keys(posZones).forEach(function(k) {
     var parts=k.split('|'); if(parseInt(parts[1])!==fi||parseInt(parts[2])!==posCurPage) return;
@@ -615,9 +616,10 @@ function makePDrag(el,k) {
 }
 
 function posSum() {
+  var el = document.getElementById('psum'); if(!el) return;
   var keys=Object.keys(posZones);
-  if(!keys.length){document.getElementById('psum').innerHTML='';return;}
-  document.getElementById('psum').innerHTML='<div style="font-size:.79rem;color:var(--muted);font-weight:600;margin-bottom:5px">Zonas definidas:</div>'+
+  if(!keys.length){el.innerHTML='';return;}
+  el.innerHTML='<div style="font-size:.79rem;color:var(--muted);font-weight:600;margin-bottom:5px">Zonas definidas:</div>'+
     keys.map(function(k){var p=k.split('|');return '<div style="font-size:.78rem;padding:3px 0;border-bottom:1px solid var(--cream)">✓ <b>'+p[0]+'</b> - '+(pdfFiles[parseInt(p[1])]?pdfFiles[parseInt(p[1])].name:'?')+', pag.'+p[2]+'</div>';}).join('');
 }
 
