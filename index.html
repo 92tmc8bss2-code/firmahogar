@@ -246,9 +246,9 @@ h2{font-family:'Playfair Display',serif;font-size:1.5rem;margin-bottom:6px}
         <div class="fld" style="flex:1;min-width:80px;margin:0">
           <label>Pagina</label>
           <div style="display:flex;gap:5px;align-items:center;margin-top:5px">
-            <button class="btn bg sm" onclick="posPage(-1)">◀</button>
+            <button class="btn bg sm" onclick="posChangePage(-1)">◀</button>
             <span id="pp-info" style="font-size:.82rem;min-width:38px;text-align:center">1/1</span>
-            <button class="btn bg sm" onclick="posPage(1)">▶</button>
+            <button class="btn bg sm" onclick="posChangePage(1)">▶</button>
           </div>
         </div>
       </div>
@@ -387,7 +387,7 @@ var BASE = window.location.href.split('?')[0];
 // STATE
 var docs = [], signers = [], filtro = 'todos';
 var pdfFiles = [], signerCount = 0, posZones = {};
-var posPdfDoc = null, posPage = 1, posTotalPages = 1;
+var posPdfDoc = null, posCurPage = 1, posTotalPages = 1;
 var signSigner = null, signDocData = null, signPdfDoc = null;
 var signPage = 1, signTotalPages = 1, signScale = 1.5;
 var signStickers = [], signDataURL = null, signMode = null;
@@ -406,6 +406,7 @@ function pubURL(p){return SB+'/storage/v1/object/public/pdfs/'+p;}
 function getIP(){return fetch('https://api.ipify.org?format=json').then(function(r){return r.json();}).then(function(d){return d.ip||'';}).catch(function(){return '';});}
 
 // INIT
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 document.addEventListener('DOMContentLoaded', function() {
   var token = new URLSearchParams(window.location.search).get('token');
   if(token){ initSign(token); }
@@ -566,23 +567,23 @@ function posLoadPDF() {
   if(!pdfFiles[idx]) return;
   loading(true);
   pdfjsLib.getDocument({data: new Uint8Array(pdfFiles[idx].bytes)}).promise.then(function(d) {
-    posPdfDoc = d; posTotalPages = d.numPages; posPage = 1;
+    posPdfDoc = d; posTotalPages = d.numPages; posCurPage = 1;
     return posRenderPage();
   }).catch(function(e){ toast('Error PDF: '+e.message); }).finally(function(){ loading(false); });
 }
 
 function posRenderPage() {
   if(!posPdfDoc) return Promise.resolve();
-  return posPdfDoc.getPage(posPage).then(function(pg) {
+  return posPdfDoc.getPage(posCurPage).then(function(pg) {
     var vp = pg.getViewport({scale:1.3});
     var c = document.getElementById('ppdf-canvas');
     c.width = vp.width; c.height = vp.height;
-    document.getElementById('pp-info').textContent = posPage+'/'+posTotalPages;
+    document.getElementById('pp-info').textContent = posCurPage+'/'+posTotalPages;
     return pg.render({canvasContext:c.getContext('2d'), viewport:vp}).promise;
   }).then(function(){ posRenderOv(); });
 }
 
-function posPage(d) { var n=posPage+d; if(n<1||n>posTotalPages)return; posPage=n; posRenderPage(); }
+function posChangePage(d) { var n=posCurPage+d; if(n<1||n>posTotalPages)return; posCurPage=n; posRenderPage(); }
 
 document.getElementById('ppdf-cont').addEventListener('click', function(e) {
   if(e.target!==this && e.target!==document.getElementById('ppdf-canvas')) return;
@@ -591,7 +592,7 @@ document.getElementById('ppdf-cont').addEventListener('click', function(e) {
   var sn = document.getElementById('psel-s').value;
   var fi = parseInt(document.getElementById('psel-f').value||'0');
   if(!sn) return;
-  var key = sn+'|'+fi+'|'+posPage;
+  var key = sn+'|'+fi+'|'+posCurPage;
   var c = document.getElementById('ppdf-canvas');
   var W=160,H=55;
   posZones[key] = {x:Math.min(Math.max(x-W/2,0),c.offsetWidth-W), y:Math.min(Math.max(y-H/2,0),c.offsetHeight-H), w:W, h:H};
@@ -602,7 +603,7 @@ function posRenderOv() {
   var ov = document.getElementById('pov'); ov.innerHTML='';
   var fi = parseInt(document.getElementById('psel-f').value||'0');
   Object.keys(posZones).forEach(function(k) {
-    var parts=k.split('|'); if(parseInt(parts[1])!==fi||parseInt(parts[2])!==posPage) return;
+    var parts=k.split('|'); if(parseInt(parts[1])!==fi||parseInt(parts[2])!==posCurPage) return;
     var z=posZones[k];
     var el=document.createElement('div');
     el.style.cssText='position:absolute;left:'+z.x+'px;top:'+z.y+'px;width:'+z.w+'px;height:'+z.h+'px;border:2px solid var(--amber);background:rgba(200,134,10,.1);border-radius:4px;pointer-events:all;cursor:move;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:600;color:var(--amber3);user-select:none';
