@@ -566,7 +566,8 @@ function posLoadPDF() {
   var idx = parseInt(document.getElementById('psel-f').value||'0');
   if(!pdfFiles[idx]) return;
   loading(true);
-  pdfjsLib.getDocument({data: new Uint8Array(pdfFiles[idx].bytes)}).promise.then(function(d) {
+  var copy = pdfFiles[idx].bytes.slice(0);
+  pdfjsLib.getDocument({data: new Uint8Array(copy)}).promise.then(function(d) {
     posPdfDoc = d; posTotalPages = d.numPages; posCurPage = 1;
     return posRenderPage();
   }).catch(function(e){ toast('Error PDF: '+e.message); }).finally(function(){ loading(false); });
@@ -650,7 +651,7 @@ function crearDoc() {
     if(i>=pdfFiles.length) return afterUpload();
     var f=pdfFiles[i];
     var path = Date.now()+'_'+Math.random().toString(36).slice(2)+'_'+f.name.replace(/\s/g,'_');
-    upFile(path,f.bytes).then(function(){ paths.push({path:path,name:f.name}); uploadNext(i+1); }).catch(function(e){ toast('Error subiendo: '+e.message); loading(false); });
+    upFile(path, f.bytes.slice(0)).then(function(){ paths.push({path:path,name:f.name}); uploadNext(i+1); }).catch(function(e){ toast('Error subiendo: '+e.message); loading(false); });
   };
   function afterUpload() {
     sbPost('documents',{title:title,category:cat,expires_at:expAt,pdf_path:paths[0].path,pdf_paths:paths.map(function(p){return p.path;}),pdf_names:paths.map(function(p){return p.name;})})
