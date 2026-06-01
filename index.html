@@ -656,7 +656,9 @@ function crearDoc() {
   function afterUpload() {
     sbPost('documents',{title:title,category:cat,expires_at:expAt,pdf_path:paths[0].path,pdf_paths:paths.map(function(p){return p.path;}),pdf_names:paths.map(function(p){return p.name;})})
     .then(function(res){
-      var doc = Array.isArray(res)?res[0]:res;
+      console.log('Document response:', JSON.stringify(res));
+      var doc = Array.isArray(res) ? res[0] : res;
+      if(!doc || !doc.id){ toast('Error: no se obtuvo ID del documento. Respuesta: '+JSON.stringify(res)); loading(false); return; }
       var addNext = function(j) {
         if(j>=sData.length) return afterSigners(doc);
         var s=sData[j];
