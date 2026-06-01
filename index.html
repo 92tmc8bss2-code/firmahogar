@@ -812,7 +812,13 @@ function startSign() {
 
 function loadSignPDF(idx) {
   loading(true); signPdfIdx=idx;
-  fetch(pubURL(signPdfPaths[idx])).then(function(r){return r.arrayBuffer();}).then(function(buf){
+  var pdfUrl = pubURL(signPdfPaths[idx]);
+  console.log('Loading PDF from:', pdfUrl);
+  fetch(pdfUrl).then(function(r){
+    console.log('PDF fetch status:', r.status, r.statusText);
+    if(!r.ok) throw new Error('HTTP '+r.status+': '+r.statusText);
+    return r.arrayBuffer();
+  }).then(function(buf){
     return pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise.then(function(d){
       signPdfDoc=d;signTotalPages=d.numPages;signPage=1;return signRenderPage();
     });
