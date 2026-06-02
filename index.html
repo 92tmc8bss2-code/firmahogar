@@ -478,25 +478,34 @@ function dlSigned(pdfPath,fileName){
     return PDFLib.PDFDocument.load(buf).then(function(pdfDoc){
       return pdfjsLib.getDocument({data:new Uint8Array(buf.slice(0))}).promise.then(function(pjsDoc){
         var pages=pdfDoc.getPages();
+        // Build flat list of all signature placements
+        var allPlacements=[];
+        curSigs.forEach(function(s){
+          if(!s.signed_at||!s.signature_data||s.sig_pdf_path!==pdfPath)return;
+          if(s.all_sigs){
+            try{
+              var arr=JSON.parse(s.all_sigs);
+              arr.forEach(function(st){allPlacements.push({page:st.page,x:st.x,y:st.y,w:st.w,h:st.h,url:st.url||s.signature_data});});
+            }catch(e){allPlacements.push({page:s.sig_page||1,x:s.sig_x,y:s.sig_y,w:s.sig_w,h:s.sig_h,url:s.signature_data});}
+          } else {
+            allPlacements.push({page:s.sig_page||1,x:s.sig_x,y:s.sig_y,w:s.sig_w,h:s.sig_h,url:s.signature_data});
+          }
+        });
         function addSig(i){
-          if(i>=curSigs.length){return pdfDoc.save().then(function(bytes){
+          if(i>=allPlacements.length){return pdfDoc.save().then(function(bytes){
             var blob=new Blob([bytes],{type:'application/pdf'});
             var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='firmado_'+fileName;a.click();URL.revokeObjectURL(url);
             toast('PDF descargado');
           });}
-          var s=curSigs[i];
-          if(!s.signed_at||!s.signature_data||s.sig_pdf_path!==pdfPath){return addSig(i+1);}
-          var pgIdx=(s.sig_page||1)-1;var pg=pages[pgIdx];if(!pg)return addSig(i+1);
+          var st=allPlacements[i];
+          var pgIdx=(st.page||1)-1;var pg=pages[pgIdx];if(!pg)return addSig(i+1);
           var sz=pg.getSize();
-          return pjsDoc.getPage(s.sig_page||1).then(function(pjsPg){
+          return pjsDoc.getPage(st.page||1).then(function(pjsPg){
             var vp=pjsPg.getViewport({scale:1.5});
             var scX=sz.width/vp.width;var scY=sz.height/vp.height;
-            var pdfX=s.sig_x*scX;
-            var pdfY=sz.height-(s.sig_y+s.sig_h)*scY;
-            var pdfW=s.sig_w*scX;var pdfH=s.sig_h*scY;
-            return fetch(s.signature_data).then(function(r){return r.arrayBuffer();}).then(function(ib){
+            return fetch(st.url).then(function(r){return r.arrayBuffer();}).then(function(ib){
               return pdfDoc.embedPng(ib).then(function(img){
-                pg.drawImage(img,{x:pdfX,y:pdfY,width:pdfW,height:pdfH});
+                pg.drawImage(img,{x:st.x*scX,y:sz.height-(st.y+st.h)*scY,width:st.w*scX,height:st.h*scY});
                 return addSig(i+1);
               });
             });
@@ -645,7 +654,8 @@ function confirmSign(){
     privacy_accepted:true,
     sig_page:s.page,
     sig_pdf_path:signPaths[s.fi]||signPaths[0],
-    sig_x:s.x,sig_y:s.y,sig_w:s.w,sig_h:s.h
+    sig_x:s.x,sig_y:s.y,sig_w:s.w,sig_h:s.h,
+    all_sigs:JSON.stringify(valid.map(function(st){return{page:st.page,fi:st.fi,x:st.x,y:st.y,w:st.w,h:st.h,url:st.url};}))
   }).then(function(){showV('ok');checkAllSigned();}).catch(function(e){toast('Error: '+e.message);}).finally(function(){ld(false);});
 }
 
@@ -740,8 +750,6 @@ function useSig(type){
   if(type==='draw'){url=trimCanvas(document.getElementById('sigpad'));if(!url){toast('Dibuja tu firma primero');return;}}
   else{var t=document.getElementById('sigtxt').value.trim();if(!t){toast('Escribe tu firma');return;}var tc=document.createElement('canvas');tc.width=300;tc.height=90;var tctx=tc.getContext('2d');tctx.clearRect(0,0,300,90);tctx.font='bold 52px serif';tctx.fillStyle=drawColor;tctx.textBaseline='middle';tctx.fillText(t,8,45);url=tc.toDataURL('image/png');}
   signDataURL=url;
-  signStickers.forEach(function(s,i){if(s){s.el.remove();signStickers[i]=null;}});
-  document.getElementById('btn-ok').disabled=true;
   signMode='pending';
   document.getElementById('sc').style.cursor='crosshair';
   toast('Haz clic en el PDF donde quieres colocar la firma');
