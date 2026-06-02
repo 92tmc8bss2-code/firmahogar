@@ -485,10 +485,19 @@ function dlSigned(pdfPath,fileName){
           if(s.all_sigs){
             try{
               var arr=JSON.parse(s.all_sigs);
-              arr.forEach(function(st){allPlacements.push({page:st.page,x:st.x,y:st.y,w:st.w,h:st.h,url:st.url||s.signature_data});});
-            }catch(e){allPlacements.push({page:s.sig_page||1,x:s.sig_x,y:s.sig_y,w:s.sig_w,h:s.sig_h,url:s.signature_data});}
+              arr.forEach(function(st){
+                // Only use entries that are normalized (new format)
+                if(st.normalized){
+                  allPlacements.push({page:st.page,x:st.x,y:st.y,w:st.w,h:st.h,url:st.url||s.signature_data,normalized:true});
+                }
+              });
+              // If no normalized entries found, fall back to sig_x/y from Supabase
+              if(!allPlacements.length){
+                allPlacements.push({page:s.sig_page||1,x:s.sig_x,y:s.sig_y,w:s.sig_w,h:s.sig_h,url:s.signature_data,normalized:true});
+              }
+            }catch(e){allPlacements.push({page:s.sig_page||1,x:s.sig_x,y:s.sig_y,w:s.sig_w,h:s.sig_h,url:s.signature_data,normalized:true});}
           } else {
-            allPlacements.push({page:s.sig_page||1,x:s.sig_x,y:s.sig_y,w:s.sig_w,h:s.sig_h,url:s.signature_data});
+            allPlacements.push({page:s.sig_page||1,x:s.sig_x,y:s.sig_y,w:s.sig_w,h:s.sig_h,url:s.signature_data,normalized:true});
           }
         });
         function addSig(i){
@@ -610,14 +619,15 @@ function placeSticker(x,y,url,W,H,scaleX,scaleY,canvasW,canvasH){
   W=W||160;H=H||60;scaleX=scaleX||1;scaleY=scaleY||1;
   var canvas=document.getElementById('scc');
   canvasW=canvasW||canvas.width;canvasH=canvasH||canvas.height;
-  var cont=document.getElementById('sc');
-  var sx=Math.min(Math.max(x-W/2,0),cont.offsetWidth-W);
-  var sy=Math.min(Math.max(y-H/2,0),cont.offsetHeight-H);
-  // Normalized coords (0-1) based on actual canvas pixels
-  var nx=(sx+W/2)*scaleX/canvasW;
-  var ny=(sy+H/2)*scaleY/canvasH;
-  var nw=W*scaleX/canvasW;
-  var nh=H*scaleY/canvasH;
+  // Display position: clamp to canvas CSS bounds (x,y are CSS pixels from canvas rect)
+  var rect=canvas.getBoundingClientRect();
+  var sx=Math.min(Math.max(x-W/2,0),rect.width-W);
+  var sy=Math.min(Math.max(y-H/2,0),rect.height-H);
+  // Normalized coords: use x,y directly (CSS pixels from canvas), divide by canvas CSS size
+  var nx=(x)/rect.width;
+  var ny=(y)/rect.height;
+  var nw=W/rect.width;
+  var nh=H/rect.height;
   var idx=signStickers.length;
   var el=document.createElement('div');el.className='stk';
   el.style.cssText='left:'+sx+'px;top:'+sy+'px;width:'+W+'px;height:'+H+'px;';
@@ -627,7 +637,6 @@ function placeSticker(x,y,url,W,H,scaleX,scaleY,canvasW,canvasH){
   el.appendChild(dx);
   var rh=document.createElement('div');rh.className='rsz';el.appendChild(rh);
   document.getElementById('so').appendChild(el);
-  // Store both display coords (for dragging) and normalized coords (for PDF)
   signStickers.push({el:el,x:sx,y:sy,w:W,h:H,nx:nx,ny:ny,nw:nw,nh:nh,url:url,page:signPage,fi:signPdfIdx});
   makeDrag(el,idx);makeRsz(rh,el,idx);
 }
@@ -637,13 +646,13 @@ function makeDrag(el,idx){
   el.addEventListener('mousedown',function(e){
     if(e.target.tagName==='BUTTON'||e.target.className==='rsz')return;
     e.preventDefault();ox=parseInt(el.style.left);oy=parseInt(el.style.top);sx=e.clientX;sy=e.clientY;el.classList.add('sel');
-    var mv=function(e){var cont=document.getElementById('sc');var canvas=document.getElementById('scc');var nx=Math.min(Math.max(ox+e.clientX-sx,0),cont.offsetWidth-el.offsetWidth);var ny=Math.min(Math.max(oy+e.clientY-sy,0),cont.offsetHeight-el.offsetHeight);el.style.left=nx+'px';el.style.top=ny+'px';if(signStickers[idx]){signStickers[idx].x=nx;signStickers[idx].y=ny;var rect=canvas.getBoundingClientRect();var sX=canvas.width/rect.width;var sY=canvas.height/rect.height;signStickers[idx].nx=(nx+el.offsetWidth/2)*sX/canvas.width;signStickers[idx].ny=(ny+el.offsetHeight/2)*sY/canvas.height;signStickers[idx].nw=el.offsetWidth*sX/canvas.width;signStickers[idx].nh=el.offsetHeight*sY/canvas.height;}};
+    var mv=function(e){var cont=document.getElementById('sc');var canvas=document.getElementById('scc');var nx=Math.min(Math.max(ox+e.clientX-sx,0),cont.offsetWidth-el.offsetWidth);var ny=Math.min(Math.max(oy+e.clientY-sy,0),cont.offsetHeight-el.offsetHeight);el.style.left=nx+'px';el.style.top=ny+'px';if(signStickers[idx]){signStickers[idx].x=nx;signStickers[idx].y=ny;var rect=canvas.getBoundingClientRect();signStickers[idx].nx=(nx+el.offsetWidth/2)/rect.width;signStickers[idx].ny=(ny+el.offsetHeight/2)/rect.height;signStickers[idx].nw=el.offsetWidth/rect.width;signStickers[idx].nh=el.offsetHeight/rect.height;}};
     var up=function(){document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);};
     document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
   });
   el.addEventListener('touchstart',function(e){
     var t=e.touches[0];ox=parseInt(el.style.left);oy=parseInt(el.style.top);sx=t.clientX;sy=t.clientY;
-    var mv=function(e){e.preventDefault();var tt=e.touches[0];var cont=document.getElementById('sc');var nx=Math.min(Math.max(ox+tt.clientX-sx,0),cont.offsetWidth-el.offsetWidth);var ny=Math.min(Math.max(oy+tt.clientY-sy,0),cont.offsetHeight-el.offsetHeight);el.style.left=nx+'px';el.style.top=ny+'px';if(signStickers[idx]){signStickers[idx].x=nx;signStickers[idx].y=ny;}};
+    var mv=function(e){e.preventDefault();var tt=e.touches[0];var cont=document.getElementById('sc');var canvas=document.getElementById('scc');var nx=Math.min(Math.max(ox+tt.clientX-sx,0),cont.offsetWidth-el.offsetWidth);var ny=Math.min(Math.max(oy+tt.clientY-sy,0),cont.offsetHeight-el.offsetHeight);el.style.left=nx+'px';el.style.top=ny+'px';if(signStickers[idx]){signStickers[idx].x=nx;signStickers[idx].y=ny;var rect=canvas.getBoundingClientRect();signStickers[idx].nx=(nx+el.offsetWidth/2)/rect.width;signStickers[idx].ny=(ny+el.offsetHeight/2)/rect.height;signStickers[idx].nw=el.offsetWidth/rect.width;signStickers[idx].nh=el.offsetHeight/rect.height;}};
     var up=function(){document.removeEventListener('touchmove',mv);document.removeEventListener('touchend',up);};
     document.addEventListener('touchmove',mv,{passive:false});document.addEventListener('touchend',up);
   },{passive:true});
@@ -651,7 +660,17 @@ function makeDrag(el,idx){
 function makeRsz(handle,el,idx){
   handle.addEventListener('mousedown',function(e){
     e.preventDefault();e.stopPropagation();var sx=e.clientX,sy=e.clientY,sw=el.offsetWidth,sh=el.offsetHeight;
-    var mv=function(e){var nw=Math.max(50,sw+e.clientX-sx);var nh=Math.max(20,sh+e.clientY-sy);el.style.width=nw+'px';el.style.height=nh+'px';if(signStickers[idx]){signStickers[idx].w=nw;signStickers[idx].h=nh;}};
+    var mv=function(e){
+      var nw=Math.max(50,sw+e.clientX-sx);var nh=Math.max(20,sh+e.clientY-sy);
+      el.style.width=nw+'px';el.style.height=nh+'px';
+      if(signStickers[idx]){
+        signStickers[idx].w=nw;signStickers[idx].h=nh;
+        var canvas=document.getElementById('scc');var rect=canvas.getBoundingClientRect();
+        var cx=parseInt(el.style.left)+nw/2;var cy=parseInt(el.style.top)+nh/2;
+        signStickers[idx].nx=cx/rect.width;signStickers[idx].ny=cy/rect.height;
+        signStickers[idx].nw=nw/rect.width;signStickers[idx].nh=nh/rect.height;
+      }
+    };
     var up=function(){document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);};
     document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
   });
@@ -672,8 +691,8 @@ function confirmSign(){
     privacy_accepted:true,
     sig_page:s.page,
     sig_pdf_path:signPaths[s.fi]||signPaths[0],
-    sig_x:s.nx||s.x,sig_y:s.ny||s.y,sig_w:s.nw||s.w,sig_h:s.nh||s.h,
-    all_sigs:JSON.stringify(valid.map(function(st){return{page:st.page,fi:st.fi,x:st.nx||st.x,y:st.ny||st.y,w:st.nw||st.w,h:st.nh||st.h,url:st.url,normalized:!!(st.nx)};}))
+    sig_x:s.nx!==undefined?s.nx:s.x, sig_y:s.ny!==undefined?s.ny:s.y, sig_w:s.nw!==undefined?s.nw:s.w, sig_h:s.nh!==undefined?s.nh:s.h,
+    all_sigs:JSON.stringify(valid.map(function(st){return{page:st.page,fi:st.fi,x:st.nx!==undefined?st.nx:st.x,y:st.ny!==undefined?st.ny:st.y,w:st.nw!==undefined?st.nw:st.w,h:st.nh!==undefined?st.nh:st.h,url:st.url,normalized:st.nx!==undefined};}))
   }).then(function(){showV('ok');checkAllSigned();}).catch(function(e){toast('Error: '+e.message);}).finally(function(){ld(false);});
 }
 
