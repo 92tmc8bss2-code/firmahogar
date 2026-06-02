@@ -284,7 +284,7 @@ h2{font-family:'Playfair Display',serif;font-size:1.5rem;margin-bottom:6px}
 var SB='https://devoqjelpdoovcmuljly.supabase.co';
 var KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRldm9xamVscGRvb3ZjbXVsamx5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxMzM3NjEsImV4cCI6MjA5NTcwOTc2MX0.qUS5cpG26dR3IhxHQ7kOZhKtBXeM50vW-FFW26X7_Dc';
 var BASE=window.location.href.split('?')[0];
-pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+try{pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';}catch(e){}
 
 var H={'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json','Accept-Profile':'public'};
 function sbGet(t,q){return fetch(SB+'/rest/v1/'+t+(q||''),{headers:H}).then(function(r){return r.json()});}
