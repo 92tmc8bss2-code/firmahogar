@@ -672,7 +672,7 @@ function checkAllSigned(){
       sbGet('documents','?id=eq.'+me.document_id).then(function(d){
         var doc=d[0];var ps=doc.pdf_paths||[doc.pdf_path];var ns=doc.pdf_names||ps.map(function(_,i){return'Documento '+(i+1);});
         sec.innerHTML='<div style="background:#dcfce7;border:1px solid #86efac;border-radius:10px;padding:16px;max-width:400px;margin:0 auto"><p style="font-size:.9rem;font-weight:600;color:#166634;margin-bottom:10px">Todas las partes han firmado. Puedes descargar el documento.</p>'+
-          ps.map(function(p,i){return'<button class="btn bgreen" style="width:100%;margin-bottom:6px" onclick="dlPublic(''+p+'',''+ns[i]+'',''+doc.id+'')">Descargar '+ns[i]+'</button>';}).join('')+'</div>';
+          ps.map(function(p,i){return'<button class="btn bgreen" style="width:100%;margin-bottom:6px" onclick="dlPublic(\''+p+'\',\''+ns[i]+'\',\''+doc.id+'\')">Descargar '+ns[i]+'</button>';}).join('')+'</div>';
       });
     } else {
       var pend=all.filter(function(s){return!s.signed_at;}).map(function(s){return s.name;}).join(', ');
