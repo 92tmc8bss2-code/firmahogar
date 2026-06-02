@@ -505,7 +505,7 @@ function dlSigned(pdfPath,fileName){
             var scX=sz.width/vp.width;var scY=sz.height/vp.height;
             return fetch(st.url).then(function(r){return r.arrayBuffer();}).then(function(ib){
               return pdfDoc.embedPng(ib).then(function(img){
-                pg.drawImage(img,{x:st.x*scX,y:sz.height-(st.y+st.h)*scY,width:st.w*scX,height:st.h*scY});
+                pg.drawImage(img,{x:st.x*scX,y:sz.height-((st.y+st.h)/vp.height)*sz.height,width:st.w*scX,height:(st.h/vp.height)*sz.height});
                 return addSig(i+1);
               });
             });
@@ -660,20 +660,25 @@ function confirmSign(){
 }
 
 function checkAllSigned(){
-  if(!signSigner)return;
-  sbGet('signers','?document_id=eq.'+signSigner.document_id).then(function(all){
+  var token=new URLSearchParams(window.location.search).get('token');
+  if(!token)return;
+  sbGet('signers','?token=eq.'+token).then(function(res){
+    if(!res.length)return;
+    var me=res[0];
+    sbGet('signers','?document_id=eq.'+me.document_id).then(function(all){
     var ok=all.every(function(s){return s.signed_at;});
     var sec=document.getElementById('ok-dl');
     if(ok){
-      sbGet('documents','?id=eq.'+signSigner.document_id).then(function(d){
+      sbGet('documents','?id=eq.'+me.document_id).then(function(d){
         var doc=d[0];var ps=doc.pdf_paths||[doc.pdf_path];var ns=doc.pdf_names||ps.map(function(_,i){return'Documento '+(i+1);});
-        sec.innerHTML='<div style="background:#dcfce7;border:1px solid #86efac;border-radius:10px;padding:16px;max-width:400px;margin:0 auto"><p style="font-size:.9rem;font-weight:600;color:#166534;margin-bottom:10px">Todas las partes han firmado. Puedes descargar el documento.</p>'+
-          ps.map(function(p,i){return'<button class="btn bgreen" style="width:100%;margin-bottom:6px" onclick="dlPublic(\''+p+'\',\''+ns[i]+'\',\''+doc.id+'\')">Descargar '+ns[i]+'</button>';}).join('')+'</div>';
+        sec.innerHTML='<div style="background:#dcfce7;border:1px solid #86efac;border-radius:10px;padding:16px;max-width:400px;margin:0 auto"><p style="font-size:.9rem;font-weight:600;color:#166634;margin-bottom:10px">Todas las partes han firmado. Puedes descargar el documento.</p>'+
+          ps.map(function(p,i){return'<button class="btn bgreen" style="width:100%;margin-bottom:6px" onclick="dlPublic(''+p+'',''+ns[i]+'',''+doc.id+'')">Descargar '+ns[i]+'</button>';}).join('')+'</div>';
       });
     } else {
       var pend=all.filter(function(s){return!s.signed_at;}).map(function(s){return s.name;}).join(', ');
       sec.innerHTML='<div class="info">Falta la firma de: <b>'+pend+'</b>. Cuando todos firmen podras descargarlo desde este enlace.</div>';
     }
+  });
   });
 }
 
@@ -701,7 +706,7 @@ function dlPublic(pdfPath,fileName,docId){
               var scX=sz.width/vp.width;var scY=sz.height/vp.height;
               return fetch(s.signature_data).then(function(r){return r.arrayBuffer();}).then(function(ib){
                 return pdfDoc.embedPng(ib).then(function(img){
-                  pg.drawImage(img,{x:s.sig_x*scX,y:sz.height-(s.sig_y+s.sig_h)*scY,width:s.sig_w*scX,height:s.sig_h*scY});
+                  pg.drawImage(img,{x:s.sig_x*scX,y:sz.height-((s.sig_y+s.sig_h)/vp.height)*sz.height,width:s.sig_w*scX,height:(s.sig_h/vp.height)*sz.height});
                   return addSig(i+1);
                 });
               });
