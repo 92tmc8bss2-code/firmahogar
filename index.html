@@ -492,7 +492,7 @@ function dlSigned(pdfPath,fileName){
             var vp=pjsPg.getViewport({scale:1.5});
             var scX=sz.width/vp.width;var scY=sz.height/vp.height;
             var pdfX=s.sig_x*scX;
-            var pdfY=sz.height-(s.sig_y*scY)-(s.sig_h*scY);
+            var pdfY=sz.height-(s.sig_y+s.sig_h)*scY;
             var pdfW=s.sig_w*scX;var pdfH=s.sig_h*scY;
             return fetch(s.signature_data).then(function(r){return r.arrayBuffer();}).then(function(ib){
               return pdfDoc.embedPng(ib).then(function(img){
@@ -691,7 +691,7 @@ function dlPublic(pdfPath,fileName,docId){
               var scX=sz.width/vp.width;var scY=sz.height/vp.height;
               return fetch(s.signature_data).then(function(r){return r.arrayBuffer();}).then(function(ib){
                 return pdfDoc.embedPng(ib).then(function(img){
-                  pg.drawImage(img,{x:s.sig_x*scX,y:sz.height-(s.sig_y*scY)-(s.sig_h*scY),width:s.sig_w*scX,height:s.sig_h*scY});
+                  pg.drawImage(img,{x:s.sig_x*scX,y:sz.height-(s.sig_y+s.sig_h)*scY,width:s.sig_w*scX,height:s.sig_h*scY});
                   return addSig(i+1);
                 });
               });
