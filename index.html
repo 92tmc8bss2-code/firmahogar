@@ -305,6 +305,26 @@ function upPDF(path,data){
 document.addEventListener('DOMContentLoaded',function(){
   var token=new URLSearchParams(window.location.search).get('token');
   if(token){initSign(token);}else{goHome();}
+  var upz=document.getElementById('upz');
+  if(upz){
+    upz.addEventListener('dragover',function(e){e.preventDefault();upz.classList.add('drag');});
+    upz.addEventListener('dragleave',function(){upz.classList.remove('drag');});
+    upz.addEventListener('drop',function(e){e.preventDefault();upz.classList.remove('drag');onFiles(e.dataTransfer.files);});
+  }
+  var sc=document.getElementById('sc');
+  if(sc){
+    sc.addEventListener('click',function(e){
+      if(signMode!=='pending')return;
+      var canvas=document.getElementById('scc');
+      var rect=canvas.getBoundingClientRect();
+      var x=e.clientX-rect.left,y=e.clientY-rect.top;
+      var scaleX=canvas.width/rect.width;
+      var scaleY=canvas.height/rect.height;
+      placeSticker(x,y,signDataURL,160,60,scaleX,scaleY,canvas.width,canvas.height);
+      signMode=null;sc.style.cursor='default';
+      document.getElementById('btn-ok').disabled=false;
+    });
+  }
 });
 
 function showV(v){document.querySelectorAll('.view').forEach(function(e){e.classList.remove('on');});document.getElementById('v-'+v).classList.add('on');document.getElementById('btn-home').style.display=v==='home'?'none':'';}
@@ -368,10 +388,7 @@ function delDoc(id,title,e){
 
 // NUEVO
 var pdfFiles=[],scnt=0;
-var upz=document.getElementById('upz');
-upz.addEventListener('dragover',function(e){e.preventDefault();upz.classList.add('drag');});
-upz.addEventListener('dragleave',function(){upz.classList.remove('drag');});
-upz.addEventListener('drop',function(e){e.preventDefault();upz.classList.remove('drag');onFiles(e.dataTransfer.files);});
+// drag handlers moved to DOMContentLoaded
 function onFiles(files){
   for(var i=0;i<files.length;i++){
     (function(f){
@@ -601,19 +618,7 @@ function renderSPage(){
 }
 function spg(d){var n=signPage+d;if(n<1||n>signTotal)return;signPage=n;renderSPage();}
 
-document.getElementById('sc').addEventListener('click',function(e){
-  if(signMode!=='pending')return;
-  var canvas=document.getElementById('scc');
-  var rect=canvas.getBoundingClientRect();
-  // Use canvas element position, not container, for accurate coords
-  var x=e.clientX-rect.left,y=e.clientY-rect.top;
-  // Convert to canvas pixel coords (CSS pixels -> canvas pixels)
-  var scaleX=canvas.width/rect.width;
-  var scaleY=canvas.height/rect.height;
-  placeSticker(x,y,signDataURL,160,60,scaleX,scaleY,canvas.width,canvas.height);
-  signMode=null;this.style.cursor='default';
-  document.getElementById('btn-ok').disabled=false;
-});
+// sc click handler moved to DOMContentLoaded
 
 function placeSticker(x,y,url,W,H,scaleX,scaleY,canvasW,canvasH){
   W=W||160;H=H||60;scaleX=scaleX||1;scaleY=scaleY||1;
@@ -704,7 +709,6 @@ function confirmSign(){
     sig_x:nx,sig_y:ny,sig_w:nw,sig_h:nh,
     all_sigs:JSON.stringify(allSigs)
   }).then(function(){showV('ok');checkAllSigned();}).catch(function(e){toast('Error: '+e.message);}).finally(function(){ld(false);});
-}
 }
 
 function checkAllSigned(){
