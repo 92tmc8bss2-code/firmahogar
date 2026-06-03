@@ -499,6 +499,7 @@ function dlSigned(pdfPath,fileName){
         var allPlacements=[];
         curSigs.forEach(function(s){
           if(!s.signed_at||!s.signature_data)return;
+          var addedFromAllSigs=false;
           if(s.all_sigs){
             try{
               var arr=JSON.parse(s.all_sigs);
@@ -506,12 +507,13 @@ function dlSigned(pdfPath,fileName){
                 var entryPath=st.pdfPath||s.sig_pdf_path;
                 if(st.normalized&&entryPath===pdfPath){
                   allPlacements.push({page:st.page,x:st.x,y:st.y,w:st.w,h:st.h,url:st.url||s.signature_data});
+                  addedFromAllSigs=true;
                 }
               });
             }catch(e){}
           }
-          // Fallback: use legacy sig fields if no all_sigs entries for this pdf
-          if(!allPlacements.length&&s.sig_pdf_path===pdfPath){
+          // Fallback per signer: use legacy fields if all_sigs had nothing for this pdf
+          if(!addedFromAllSigs&&s.sig_pdf_path===pdfPath){
             allPlacements.push({page:s.sig_page||1,x:s.sig_x,y:s.sig_y,w:s.sig_w,h:s.sig_h,url:s.signature_data});
           }
         });
@@ -748,6 +750,7 @@ function dlPublic(pdfPath,fileName,docId){
           var allPlacements=[];
           signers.forEach(function(s){
             if(!s.signature_data)return;
+            var addedFromAllSigs=false;
             if(s.all_sigs){
               try{
                 var arr=JSON.parse(s.all_sigs);
@@ -755,12 +758,13 @@ function dlPublic(pdfPath,fileName,docId){
                   var entryPath=st.pdfPath||s.sig_pdf_path;
                   if(st.normalized&&entryPath===pdfPath){
                     allPlacements.push({page:st.page,x:st.x,y:st.y,w:st.w,h:st.h,url:st.url||s.signature_data});
+                    addedFromAllSigs=true;
                   }
                 });
               }catch(e){}
             }
-            // Fallback
-            if(!allPlacements.length&&s.sig_pdf_path===pdfPath){
+            // Fallback per signer
+            if(!addedFromAllSigs&&s.sig_pdf_path===pdfPath){
               allPlacements.push({page:s.sig_page||1,x:s.sig_x,y:s.sig_y,w:s.sig_w,h:s.sig_h,url:s.signature_data});
             }
           });
