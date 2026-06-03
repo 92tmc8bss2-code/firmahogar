@@ -171,6 +171,32 @@ h2{font-family:'Playfair Display',serif;font-size:1.5rem;margin-bottom:6px}
       <button class="btn bo sm" onclick="addSigner()">+ Añadir firmante</button>
     </div>
   </div>
+  <div class="card" id="zonacard" style="display:none">
+    <div class="ch">4. Define donde firma cada persona</div>
+    <div class="cb">
+      <div style="background:#fffbf4;border:1px solid #f0d090;border-radius:8px;padding:9px 12px;font-size:.81rem;color:#7a5c08;margin-bottom:10px">Selecciona firmante y archivo, luego haz clic en el PDF para marcar su zona de firma.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <div class="fld" style="flex:1;min-width:130px;margin:0"><label>Firmante</label><select id="zsel-s" onchange="zonaRenderOv()"></select></div>
+        <div class="fld" style="flex:1;min-width:130px;margin:0"><label>Archivo</label><select id="zsel-f" onchange="zonaLoadPDF()"></select></div>
+        <div class="fld" style="flex:1;min-width:80px;margin:0">
+          <label>Pagina</label>
+          <div style="display:flex;gap:5px;align-items:center;margin-top:5px">
+            <button class="btn bg sm" onclick="zonaPage(-1)">◀</button>
+            <span id="zp-info" style="font-size:.82rem;min-width:38px;text-align:center">1/1</span>
+            <button class="btn bg sm" onclick="zonaPage(1)">▶</button>
+          </div>
+        </div>
+      </div>
+      <div style="background:#bbb;border-radius:8px;padding:10px;display:flex;justify-content:center;min-height:280px;overflow:auto">
+        <div id="zc" style="position:relative;display:inline-block;cursor:crosshair">
+          <canvas id="zcc"></canvas>
+          <div id="zov" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none"></div>
+        </div>
+      </div>
+      <p style="font-size:.76rem;color:var(--muted);margin-top:6px;text-align:center">Haz clic en el PDF para marcar la zona · Arrastra para mover</p>
+      <div id="zsum" style="margin-top:8px"></div>
+    </div>
+  </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
     <button class="btn bg" onclick="goHome()">← Cancelar</button>
     <button class="btn bp" onclick="crearDoc()">Crear y generar enlaces →</button>
@@ -311,6 +337,22 @@ document.addEventListener('DOMContentLoaded',function(){
     upz.addEventListener('dragleave',function(){upz.classList.remove('drag');});
     upz.addEventListener('drop',function(e){e.preventDefault();upz.classList.remove('drag');onFiles(e.dataTransfer.files);});
   }
+  var zc=document.getElementById('zc');
+  if(zc){
+    zc.addEventListener('click',function(e){
+      if(e.target!==this&&e.target!==document.getElementById('zcc'))return;
+      var rect=document.getElementById('zcc').getBoundingClientRect();
+      var x=e.clientX-rect.left,y=e.clientY-rect.top;
+      var sn=document.getElementById('zsel-s').value;
+      var fi=parseInt(document.getElementById('zsel-f').value||'0');
+      if(!sn)return;
+      var W=160,H=55;
+      var c=document.getElementById('zcc');
+      var key=sn+'|'+fi+'|'+zonaCurPage;
+      zonas[key]={x:Math.min(Math.max(x-W/2,0),c.offsetWidth-W),y:Math.min(Math.max(y-H/2,0),c.offsetHeight-H),w:W,h:H};
+      zonaRenderOv();zonaSum();
+    });
+  }
   var sc=document.getElementById('sc');
   if(sc){
     sc.addEventListener('click',function(e){
@@ -318,9 +360,7 @@ document.addEventListener('DOMContentLoaded',function(){
       var canvas=document.getElementById('scc');
       var rect=canvas.getBoundingClientRect();
       var x=e.clientX-rect.left,y=e.clientY-rect.top;
-      var scaleX=canvas.width/rect.width;
-      var scaleY=canvas.height/rect.height;
-      placeSticker(x,y,signDataURL,160,60,scaleX,scaleY,canvas.width,canvas.height);
+      placeSticker(x,y,signDataURL,160,60);
       signMode=null;sc.style.cursor='default';
       document.getElementById('btn-ok').disabled=false;
     });
@@ -389,6 +429,86 @@ function delDoc(id,title,e){
 // NUEVO
 var pdfFiles=[],scnt=0;
 // drag handlers moved to DOMContentLoaded
+// ZONA PICKER
+var zonas={}, zonaPdfDoc=null, zonaCurPage=1, zonaTotalPages=1, zonaScale=1.3;
+
+function zonaUpdate(){
+  var names=Array.from(document.querySelectorAll('[id^="sn-"]')).map(function(el){return el.value.trim();}).filter(Boolean);
+  if(!names.length||!pdfFiles.length){document.getElementById('zonacard').style.display='none';return;}
+  document.getElementById('zonacard').style.display='';
+  var ss=document.getElementById('zsel-s');
+  var cv=ss.value;
+  ss.innerHTML=names.map(function(n){return'<option value="'+n+'">'+n+'</option>';}).join('');
+  if(names.indexOf(cv)>=0)ss.value=cv;
+  var fs=document.getElementById('zsel-f');
+  var cf=fs.value;
+  fs.innerHTML=pdfFiles.map(function(f,i){return'<option value="'+i+'">'+f.name+'</option>';}).join('');
+  if(cf)fs.value=cf;
+  zonaLoadPDF();
+}
+
+function zonaLoadPDF(){
+  var idx=parseInt(document.getElementById('zsel-f').value||'0');
+  if(!pdfFiles[idx])return;
+  ld(true);
+  pdfjsLib.getDocument({data:pdfFiles[idx].data.slice(0)}).promise.then(function(d){
+    zonaPdfDoc=d;zonaTotalPages=d.numPages;zonaCurPage=1;
+    return zonaRenderPage();
+  }).catch(function(e){toast('Error PDF: '+e.message);}).finally(function(){ld(false);});
+}
+
+function zonaRenderPage(){
+  if(!zonaPdfDoc)return Promise.resolve();
+  return zonaPdfDoc.getPage(zonaCurPage).then(function(pg){
+    var vp=pg.getViewport({scale:zonaScale});
+    var c=document.getElementById('zcc');c.width=vp.width;c.height=vp.height;
+    document.getElementById('zp-info').textContent=zonaCurPage+'/'+zonaTotalPages;
+    return pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
+  }).then(function(){zonaRenderOv();});
+}
+
+function zonaPage(d){var n=zonaCurPage+d;if(n<1||n>zonaTotalPages)return;zonaCurPage=n;zonaRenderPage();}
+
+function zonaRenderOv(){
+  var ov=document.getElementById('zov');ov.innerHTML='';
+  var fi=parseInt(document.getElementById('zsel-f').value||'0');
+  var sn=document.getElementById('zsel-s').value;
+  Object.keys(zonas).forEach(function(k){
+    var parts=k.split('|');
+    if(parseInt(parts[1])!==fi||parseInt(parts[2])!==zonaCurPage)return;
+    var z=zonas[k];
+    var el=document.createElement('div');
+    var isSelected=parts[0]===sn;
+    el.style.cssText='position:absolute;left:'+z.x+'px;top:'+z.y+'px;width:'+z.w+'px;height:'+z.h+'px;border:2px solid '+(isSelected?'var(--amber)':'#1e3a8a')+';background:'+(isSelected?'rgba(200,134,10,.15)':'rgba(30,58,138,.1)')+';border-radius:4px;pointer-events:all;cursor:move;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:'+(isSelected?'var(--amber3)':'#1e3a8a')+';user-select:none';
+    el.textContent=parts[0];
+    var dx=document.createElement('button');
+    dx.style.cssText='position:absolute;top:-8px;right:-8px;width:17px;height:17px;background:var(--red);border:none;border-radius:50%;color:#fff;font-size:11px;cursor:pointer;font-weight:700;pointer-events:all';
+    dx.textContent='x';
+    dx.onclick=function(e){e.stopPropagation();delete zonas[k];zonaRenderOv();zonaSum();};
+    el.appendChild(dx);
+    zonaAddDrag(el,k);
+    ov.appendChild(el);
+  });
+}
+
+function zonaAddDrag(el,k){
+  var ox,oy,sx,sy;
+  el.addEventListener('mousedown',function(e){
+    if(e.target.tagName==='BUTTON')return;
+    e.preventDefault();ox=zonas[k].x;oy=zonas[k].y;sx=e.clientX;sy=e.clientY;
+    var mv=function(e){var c=document.getElementById('zcc');var nx=Math.min(Math.max(ox+e.clientX-sx,0),c.offsetWidth-zonas[k].w);var ny=Math.min(Math.max(oy+e.clientY-sy,0),c.offsetHeight-zonas[k].h);zonas[k].x=nx;zonas[k].y=ny;el.style.left=nx+'px';el.style.top=ny+'px';};
+    var up=function(){document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);zonaSum();};
+    document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
+  });
+}
+
+function zonaSum(){
+  var el=document.getElementById('zsum');if(!el)return;
+  var keys=Object.keys(zonas);
+  if(!keys.length){el.innerHTML='';return;}
+  el.innerHTML='<div style="font-size:.78rem;color:var(--muted);font-weight:600;margin-bottom:4px">Zonas definidas:</div>'+
+    keys.map(function(k){var p=k.split('|');return'<div style="font-size:.77rem;padding:2px 0;border-bottom:1px solid var(--cream)">✓ <b>'+p[0]+'</b> — '+(pdfFiles[parseInt(p[1])]?pdfFiles[parseInt(p[1])].name:'?')+', pag.'+p[2]+'</div>';}).join('');
+}
 function onFiles(files){
   for(var i=0;i<files.length;i++){
     (function(f){
@@ -404,12 +524,13 @@ function renderFList(){
     return'<div class="fi"><span>📄</span><span class="fi-n">'+f.name+'</span><span style="font-size:.75rem;color:var(--muted)">'+Math.round(f.size/1024)+'KB</span><button class="btn bg sm" onclick="rmF('+i+')" style="padding:3px 7px">✕</button></div>';
   }).join('');
 }
-function rmF(i){pdfFiles.splice(i,1);renderFList();}
+function rmF(i){pdfFiles.splice(i,1);renderFList();zonaUpdate();}
 function addSigner(){
   scnt++;
   var d=document.createElement('div');d.className='sr';d.id='sr-'+scnt;
-  d.innerHTML='<input type="text" placeholder="Nombre del firmante '+scnt+'" id="sn-'+scnt+'"><input type="tel" placeholder="Telefono WhatsApp" id="sp-'+scnt+'"><button class="btn bg sm" onclick="this.parentElement.remove()" style="flex-shrink:0">✕</button>';
+  d.innerHTML='<input type="text" placeholder="Nombre del firmante '+scnt+'" id="sn-'+scnt+'" oninput="zonaUpdate()"><input type="tel" placeholder="Telefono WhatsApp" id="sp-'+scnt+'"><button class="btn bg sm" onclick="this.parentElement.remove();zonaUpdate()" style="flex-shrink:0">✕</button>';
   document.getElementById('slist').appendChild(d);
+  zonaUpdate();
 }
 function crearDoc(){
   var title=document.getElementById('dtitle').value.trim();
@@ -436,7 +557,25 @@ function crearDoc(){
       if(!doc||!doc.id){toast('Error creando documento');ld(false);return;}
       function addNext(j){
         if(j>=sData.length){afterDone(doc);return;}
-        sbPost('signers',{document_id:doc.id,name:sData[j].name,phone:sData[j].phone||null}).then(function(){addNext(j+1);}).catch(function(e){toast('Error: '+e.message);ld(false);});
+        var s=sData[j];
+        // Find zona for this signer
+        var presetData={};
+        var zKey=Object.keys(zonas).find(function(k){return k.split('|')[0]===s.name;});
+        if(zKey){
+          var z=zonas[zKey];var zp=zKey.split('|');
+          var c=document.getElementById('zcc');
+          var rect=c.getBoundingClientRect();
+          // Save normalized preset zone
+          presetData={
+            preset_nx:(z.x+z.w/2)/rect.width,
+            preset_ny:(z.y+z.h/2)/rect.height,
+            preset_nw:z.w/rect.width,
+            preset_nh:z.h/rect.height,
+            preset_page:parseInt(zp[2]),
+            preset_pdf_path:paths[parseInt(zp[1])]?paths[parseInt(zp[1])].path:paths[0].path
+          };
+        }
+        sbPost('signers',Object.assign({document_id:doc.id,name:s.name,phone:s.phone||null},presetData)).then(function(){addNext(j+1);}).catch(function(e){toast('Error: '+e.message);ld(false);});
       }
       addNext(0);
     }).catch(function(e){toast('Error: '+e.message);ld(false);});
@@ -831,9 +970,36 @@ function useSig(type){
   if(type==='draw'){url=trimCanvas(document.getElementById('sigpad'));if(!url){toast('Dibuja tu firma primero');return;}}
   else{var t=document.getElementById('sigtxt').value.trim();if(!t){toast('Escribe tu firma');return;}var tc=document.createElement('canvas');tc.width=300;tc.height=90;var tctx=tc.getContext('2d');tctx.clearRect(0,0,300,90);tctx.font='bold 52px serif';tctx.fillStyle=drawColor;tctx.textBaseline='middle';tctx.fillText(t,8,45);url=tc.toDataURL('image/png');}
   signDataURL=url;
-  signMode='pending';
-  document.getElementById('sc').style.cursor='crosshair';
-  toast('Haz clic en el PDF donde quieres colocar la firma');
+  // If there's a preset zone, auto-place the signature there
+  if(signSigner&&signSigner.preset_nx!==undefined&&signSigner.preset_nx!==null){
+    var canvas=document.getElementById('scc');
+    var rect=canvas.getBoundingClientRect();
+    // Convert normalized preset to CSS pixels on current canvas
+    var px=signSigner.preset_nx*rect.width;
+    var py=signSigner.preset_ny*rect.height;
+    var pw=signSigner.preset_nw*rect.width;
+    var ph=signSigner.preset_nh*rect.height;
+    // Navigate to preset page if needed
+    var presetPage=signSigner.preset_page||1;
+    if(signPage!==presetPage){
+      signPage=presetPage;
+      renderSPage().then(function(){
+        var canvas2=document.getElementById('scc');
+        var rect2=canvas2.getBoundingClientRect();
+        placeSticker(signSigner.preset_nx*rect2.width,signSigner.preset_ny*rect2.height,url,signSigner.preset_nw*rect2.width,signSigner.preset_nh*rect2.height);
+        document.getElementById('btn-ok').disabled=false;
+        toast('Firma colocada en la zona predefinida');
+      });
+    } else {
+      placeSticker(px,py,url,pw,ph);
+      document.getElementById('btn-ok').disabled=false;
+      toast('Firma colocada en la zona predefinida');
+    }
+  } else {
+    signMode='pending';
+    document.getElementById('sc').style.cursor='crosshair';
+    toast('Haz clic en el PDF donde quieres colocar la firma');
+  }
 }
 </script>
 </body>
