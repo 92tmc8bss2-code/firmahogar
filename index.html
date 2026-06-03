@@ -349,7 +349,7 @@ document.addEventListener('DOMContentLoaded',function(){
       var W=160,H=55;
       var c=document.getElementById('zcc');
       var key=sn+'|'+fi+'|'+zonaCurPage;
-      zonas[key]={x:Math.min(Math.max(x-W/2,0),c.offsetWidth-W),y:Math.min(Math.max(y-H/2,0),c.offsetHeight-H),w:W,h:H};
+      zonas[key]={x:Math.min(Math.max(x-W/2,0),c.offsetWidth-W),y:Math.min(Math.max(y-H/2,0),c.offsetHeight-H),w:W,h:H,canvasW:rect.width,canvasH:rect.height};
       zonaRenderOv();zonaSum();
     });
   }
@@ -563,14 +563,13 @@ function crearDoc(){
         var zKey=Object.keys(zonas).find(function(k){return k.split('|')[0]===s.name;});
         if(zKey){
           var z=zonas[zKey];var zp=zKey.split('|');
-          var c=document.getElementById('zcc');
-          var rect=c.getBoundingClientRect();
-          // Save normalized preset zone
+          var cW=z.canvasW||document.getElementById('zcc').offsetWidth||300;
+          var cH=z.canvasH||document.getElementById('zcc').offsetHeight||400;
           presetData={
-            preset_nx:(z.x+z.w/2)/rect.width,
-            preset_ny:(z.y+z.h/2)/rect.height,
-            preset_nw:z.w/rect.width,
-            preset_nh:z.h/rect.height,
+            preset_nx:(z.x+z.w/2)/cW,
+            preset_ny:(z.y+z.h/2)/cH,
+            preset_nw:z.w/cW,
+            preset_nh:z.h/cH,
             preset_page:parseInt(zp[2]),
             preset_pdf_path:paths[parseInt(zp[1])]?paths[parseInt(zp[1])].path:paths[0].path
           };
@@ -582,10 +581,11 @@ function crearDoc(){
   }
   function afterDone(doc){
     toast('Documento creado');ld(false);
-    pdfFiles=[];scnt=0;
+    pdfFiles=[];scnt=0;zonas={};
     document.getElementById('dtitle').value='';
     document.getElementById('slist').innerHTML='';
     document.getElementById('flist').innerHTML='';
+    document.getElementById('zonacard').style.display='none';
     verDet(doc.id);
   }
   uploadNext(0);
