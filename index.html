@@ -514,7 +514,7 @@ function onFiles(files){
     (function(f){
       if(f.type!=='application/pdf'){toast('Solo PDFs');return;}
       var reader=new FileReader();
-      reader.onload=function(e){pdfFiles.push({name:f.name,size:f.size,data:new Uint8Array(e.target.result)});renderFList();};
+      reader.onload=function(e){pdfFiles.push({name:f.name,size:f.size,data:new Uint8Array(e.target.result)});renderFList();zonaUpdate();};
       reader.readAsArrayBuffer(f);
     })(files[i]);
   }
@@ -604,7 +604,7 @@ function verDet(id){
     }).join('');
     document.getElementById('det-links').innerHTML=curSigs.map(function(s){
       var link=BASE+'?token='+s.token;
-      var msg=encodeURIComponent('Hola '+s.name+', te envio el documento "'+curDoc.title+'" para firmar digitalmente.\n\nEnlace: '+link+'\n\nEste enlace es personal.');
+      var msg=encodeURIComponent('Hola '+s.name+', te envío el documento "'+curDoc.title+'" para que lo firmes digitalmente.\n\n📋 PASOS:\n1. Abre el enlace\n2. Escribe tu nombre completo y DNI/NIE\n3. Acepta los dos consentimientos\n4. Pulsa "Continuar a la firma"\n5. En el panel derecho dibuja tu firma o escríbela\n6. Pulsa "Usar"\n7. La firma se colocará automáticamente en tu zona\n8. Pulsa "Confirmar firma"\n\n🔗 Enlace: '+link+'\n\nEste enlace es personal e intransferible.');
       var href=s.phone?'https://wa.me/'+s.phone.replace(/\D/g,'')+'?text='+msg:'https://wa.me/?text='+msg;
       return'<div style="margin-bottom:10px"><div style="font-size:.76rem;font-weight:600;color:var(--muted);margin-bottom:4px">'+s.name+(s.signed_at?' <span class="badge b-d">Firmado</span>':'')+'</div><div class="lbox">'+link+'<button class="lcopy" onclick="cp(\''+link+'\')">Copiar</button></div><a href="'+href+'" target="_blank" class="btn bwa sm">WhatsApp a '+s.name+'</a></div>';
     }).join('');
