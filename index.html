@@ -441,8 +441,17 @@ document.addEventListener('DOMContentLoaded',function(){
   }
 });
 
-function showV(v){document.querySelectorAll('.view').forEach(function(e){e.classList.remove('on');});document.getElementById('v-'+v).classList.add('on');document.getElementById('btn-home').style.display=v==='home'?'none':'';}
-function goHome(){showV('home');loadDocs();}
+function showV(v){
+  if(window._signerMode&&v==='home'){return;}
+  if(window._signerMode&&v==='nuevo'){return;}
+  document.querySelectorAll('.view').forEach(function(e){e.classList.remove('on');});
+  document.getElementById('v-'+v).classList.add('on');
+  document.getElementById('btn-home').style.display=(v==='home'||window._signerMode)?'none':'';
+}
+function goHome(){
+  if(window._signerMode)return;
+  showV('home');loadDocs();
+}
 function toast(m){var e=document.getElementById('toast');e.textContent=m;e.classList.add('show');setTimeout(function(){e.classList.remove('show');},3000);}
 function ld(on){document.getElementById('ld').classList[on?'add':'remove']('show');}
 function cp(t){navigator.clipboard.writeText(t).then(function(){toast('Enlace copiado');}).catch(function(){var a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();document.execCommand('copy');document.body.removeChild(a);toast('Copiado');});}
@@ -792,7 +801,10 @@ var padDrw=false,padLX,padLY;
 
 function initSign(token){
   showV('sign');ld(true);
+  // Hide home button completely for signers - they should not access admin panel
   document.getElementById('btn-home').style.display='none';
+  // Mark as signer mode - prevent any navigation to admin
+  window._signerMode=true;
   sbGet('signers','?token=eq.'+token).then(function(res){
     if(!res.length){toast('Enlace no valido');ld(false);return;}
     signSigner=res[0];
