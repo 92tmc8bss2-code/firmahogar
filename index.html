@@ -367,6 +367,27 @@ function renderPreview(){
 }
 function prevPg(d){var n=prevPage+d;if(n<1||n>prevTotal)return;prevPage=n;renderPreview();}
 
+
+// Draw digital signature stamp on PDF page
+function drawStamp(page, signers, pdfLib){
+  var sz=page.getSize();
+  var signed=signers.filter(function(s){return s.signed_at;});
+  if(!signed.length)return;
+  // Draw stamp box at bottom of page
+  var stampH=14*signed.length+24;
+  var stampY=4;
+  var stampX=4;
+  var stampW=sz.width-8;
+  // Background
+  page.drawRectangle({x:stampX,y:stampY,width:stampW,height:stampH,color:pdfLib.rgb(0.95,0.98,0.95),borderColor:pdfLib.rgb(0.2,0.6,0.3),borderWidth:0.5});
+  // Title
+  page.drawText('DOCUMENTO FIRMADO ELECTRONICAMENTE - eIDAS (UE 910/2014)',{x:stampX+4,y:stampY+stampH-10,size:5.5,color:pdfLib.rgb(0.1,0.4,0.15)});
+  // Each signer
+  signed.forEach(function(s,i){
+    var txt='Firmante: '+(s.signed_fullname||s.name)+' | DNI: '+(s.signer_dni||'-')+' | Fecha: '+new Date(s.signed_at).toLocaleString('es-ES')+' | IP: '+(s.signer_ip||'-');
+    page.drawText(txt,{x:stampX+4,y:stampY+stampH-20-(i*12),size:5,color:pdfLib.rgb(0.2,0.3,0.2)});
+  });
+}
 function upPDF(path,data){
   return fetch(SB+'/storage/v1/object/pdfs/'+path,{
     method:'POST',
@@ -581,7 +602,7 @@ function rmF(i){pdfFiles.splice(i,1);renderFList();zonaUpdate();}
 function addSigner(){
   scnt++;
   var d=document.createElement('div');d.className='sr';d.id='sr-'+scnt;
-  d.innerHTML='<input type="text" placeholder="Nombre del firmante '+scnt+'" id="sn-'+scnt+'" oninput="zonaUpdate()"><input type="tel" placeholder="Telefono WhatsApp" id="sp-'+scnt+'"><button class="btn bg sm" onclick="this.parentElement.remove();zonaUpdate()" style="flex-shrink:0">✕</button>';
+  d.innerHTML='<input type="text" placeholder="Nombre del firmante '+scnt+'" id="sn-'+scnt+'" oninput="zonaUpdate()"><input type="text" placeholder="DNI/NIE (opcional)" id="sd-'+scnt+'"><input type="tel" placeholder="Telefono WhatsApp" id="sp-'+scnt+'"><button class="btn bg sm" onclick="this.parentElement.remove();zonaUpdate()" style="flex-shrink:0">✕</button>';
   document.getElementById('slist').appendChild(d);
   zonaUpdate();
 }
@@ -589,7 +610,7 @@ function crearDoc(){
   var title=document.getElementById('dtitle').value.trim();
   if(!title){toast('Escribe un titulo');return;}
   if(!pdfFiles.length){toast('Sube al menos un PDF');return;}
-  var sData=Array.from(document.querySelectorAll('[id^="sn-"]')).map(function(el){var i=el.id.replace('sn-','');return{name:el.value.trim(),phone:(document.getElementById('sp-'+i)||{}).value||''};}).filter(function(s){return s.name;});
+  var sData=Array.from(document.querySelectorAll('[id^="sn-"]')).map(function(el){var i=el.id.replace('sn-','');return{name:el.value.trim(),dni:(document.getElementById('sd-'+i)||{}).value||'',phone:(document.getElementById('sp-'+i)||{}).value||''};}).filter(function(s){return s.name;});
   if(!sData.length){toast('Añade al menos un firmante');return;}
   var cat=document.getElementById('dcat').value;
   var expAt=new Date(Date.now()+parseInt(document.getElementById('dexp').value)*86400000).toISOString();
@@ -627,7 +648,7 @@ function crearDoc(){
             preset_pdf_path:paths[parseInt(zp[1])]?paths[parseInt(zp[1])].path:paths[0].path
           };
         }
-        sbPost('signers',Object.assign({document_id:doc.id,name:s.name,phone:s.phone||null},presetData)).then(function(){addNext(j+1);}).catch(function(e){toast('Error: '+e.message);ld(false);});
+        sbPost('signers',Object.assign({document_id:doc.id,name:s.name,phone:s.phone||null,signer_expected_dni:s.dni||null},presetData)).then(function(){addNext(j+1);}).catch(function(e){toast('Error: '+e.message);ld(false);});
       }
       addNext(0);
     }).catch(function(e){toast('Error: '+e.message);ld(false);});
@@ -730,7 +751,9 @@ function dlSigned(pdfPath,fileName){
           }
         });
         function addSig(i){
-          if(i>=allPlacements.length){return pdfDoc.save().then(function(bytes){
+          if(i>=allPlacements.length){
+            pages.forEach(function(pg){drawStamp(pg,signers,PDFLib);});
+            return pdfDoc.save().then(function(bytes){
             var blob=new Blob([bytes],{type:'application/pdf'});
             var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='firmado_'+fileName;a.click();URL.revokeObjectURL(url);
             toast('PDF descargado');
@@ -798,6 +821,12 @@ function startSign(){
   var dni=document.getElementById('sign-dni').value.trim();
   if(!name){toast('Escribe tu nombre completo');return;}
   if(!dni){toast('El DNI/NIE es obligatorio');return;}
+  // Verify DNI if expected DNI was set
+  if(signSigner.signer_expected_dni){
+    var expected=signSigner.signer_expected_dni.trim().toUpperCase().replace(/[-\s]/g,'');
+    var provided=dni.trim().toUpperCase().replace(/[-\s]/g,'');
+    if(expected!==provided){toast('El DNI/NIE no coincide con el registrado. Contacta con AsisteHogar.');return;}
+  }
   if(!document.getElementById('sc1').checked){toast('Acepta el consentimiento de firma');return;}
   if(!document.getElementById('sc2').checked){toast('Acepta la politica de datos');return;}
   document.getElementById('sign-id').style.display='none';
@@ -983,7 +1012,10 @@ function dlPublic(pdfPath,fileName,docId){
             }
           });
           function addSig(i){
-            if(i>=allPlacements.length){return pdfDoc.save().then(function(bytes){
+            if(i>=allPlacements.length){
+              // Add stamp to all pages after all signatures
+              pages.forEach(function(pg){drawStamp(pg,curSigs,PDFLib);});
+              return pdfDoc.save().then(function(bytes){
               var blob=new Blob([bytes],{type:'application/pdf'});
               var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='firmado_'+fileName;a.click();URL.revokeObjectURL(url);toast('PDF descargado');
             });}
