@@ -369,23 +369,23 @@ function prevPg(d){var n=prevPage+d;if(n<1||n>prevTotal)return;prevPage=n;render
 
 
 // Draw digital signature stamp on PDF page
-function drawStamp(page, signers, pdfLib){
+function drawStamp(page, signers){
   var sz=page.getSize();
   var signed=signers.filter(function(s){return s.signed_at;});
   if(!signed.length)return;
-  // Draw stamp box at bottom of page
   var stampH=14*signed.length+24;
   var stampY=4;
   var stampX=4;
   var stampW=sz.width-8;
-  // Background
-  page.drawRectangle({x:stampX,y:stampY,width:stampW,height:stampH,color:pdfLib.rgb(0.95,0.98,0.95),borderColor:pdfLib.rgb(0.2,0.6,0.3),borderWidth:0.5});
-  // Title
-  page.drawText('DOCUMENTO FIRMADO ELECTRONICAMENTE - eIDAS (UE 910/2014)',{x:stampX+4,y:stampY+stampH-10,size:5.5,color:pdfLib.rgb(0.1,0.4,0.15)});
-  // Each signer
+  var green=PDFLib.rgb(0.2,0.6,0.3);
+  var lightGreen=PDFLib.rgb(0.95,0.98,0.95);
+  var darkGreen=PDFLib.rgb(0.1,0.4,0.15);
+  var textGreen=PDFLib.rgb(0.2,0.3,0.2);
+  page.drawRectangle({x:stampX,y:stampY,width:stampW,height:stampH,color:lightGreen,borderColor:green,borderWidth:0.5});
+  page.drawText('DOCUMENTO FIRMADO ELECTRONICAMENTE - eIDAS (UE 910/2014)',{x:stampX+4,y:stampY+stampH-10,size:5.5,color:darkGreen});
   signed.forEach(function(s,i){
     var txt='Firmante: '+(s.signed_fullname||s.name)+' | DNI: '+(s.signer_dni||'-')+' | Fecha: '+new Date(s.signed_at).toLocaleString('es-ES')+' | IP: '+(s.signer_ip||'-');
-    page.drawText(txt,{x:stampX+4,y:stampY+stampH-20-(i*12),size:5,color:pdfLib.rgb(0.2,0.3,0.2)});
+    page.drawText(txt,{x:stampX+4,y:stampY+stampH-20-(i*12),size:5,color:textGreen});
   });
 }
 function upPDF(path,data){
@@ -752,7 +752,7 @@ function dlSigned(pdfPath,fileName){
         });
         function addSig(i){
           if(i>=allPlacements.length){
-            pages.forEach(function(pg){drawStamp(pg,signers,PDFLib);});
+            pages.forEach(function(pg){drawStamp(pg,signers);});
             return pdfDoc.save().then(function(bytes){
             var blob=new Blob([bytes],{type:'application/pdf'});
             var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='firmado_'+fileName;a.click();URL.revokeObjectURL(url);
@@ -1014,7 +1014,7 @@ function dlPublic(pdfPath,fileName,docId){
           function addSig(i){
             if(i>=allPlacements.length){
               // Add stamp to all pages after all signatures
-              pages.forEach(function(pg){drawStamp(pg,curSigs,PDFLib);});
+              pages.forEach(function(pg){drawStamp(pg,curSigs);});
               return pdfDoc.save().then(function(bytes){
               var blob=new Blob([bytes],{type:'application/pdf'});
               var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='firmado_'+fileName;a.click();URL.revokeObjectURL(url);toast('PDF descargado');
