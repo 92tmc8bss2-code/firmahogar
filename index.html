@@ -215,9 +215,13 @@ h2{font-family:'Playfair Display',serif;font-size:1.5rem;margin-bottom:6px}
   </div>
   <div class="card">
     <div class="ch">Registro de auditoria eIDAS</div>
-    <div class="cb"><p style="font-size:.78rem;color:var(--muted);margin-bottom:8px">Evidencias: nombre, DNI, IP, timestamp y consentimiento.</p><div id="aud-tbl"></div><button class="btn bo sm" style="margin-top:8px" onclick="dlAudit()">Descargar log (.txt)</button></div>
+    <div class="cb"><p style="font-size:.78rem;color:var(--muted);margin-bottom:8px">Evidencias: nombre, DNI, IP, timestamp, consentimiento y hash SHA-256 del documento.</p><div id="aud-tbl"></div><button class="btn bo sm" style="margin-top:8px" onclick="dlAudit()">Descargar log (.txt)</button></div>
   </div>
   <div class="card"><div class="ch">Descargar PDFs</div><div class="cb" id="det-dl"></div></div>
+  <div class="card" id="det-reminder" style="display:none">
+    <div class="ch">⏰ Firmantes pendientes</div>
+    <div class="cb" id="det-reminder-body"></div>
+  </div>
 </main>
 </div>
 
@@ -231,6 +235,19 @@ h2{font-family:'Playfair Display',serif;font-size:1.5rem;margin-bottom:6px}
       <div id="sign-id">
         <div class="fld"><label>Tu nombre completo *</label><input type="text" id="sign-name" placeholder="Nombre y apellidos"></div>
         <div class="fld"><label>DNI / NIE *</label><input type="text" id="sign-dni" placeholder="Ej: 12345678A"></div>
+        <div id="sign-preview-wrap" style="margin-bottom:12px;display:none">
+          <div style="font-size:.76rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Vista previa del documento</div>
+          <div style="background:#bbb;border-radius:8px;padding:8px;max-height:320px;overflow:auto;display:flex;justify-content:center">
+            <div id="prev-cont" style="position:relative;display:inline-block">
+              <canvas id="prev-canvas" style="display:block;max-width:100%"></canvas>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;margin-top:6px;justify-content:center">
+            <button class="btn bg sm" onclick="prevPg(-1)">◀</button>
+            <span id="prev-pg" style="font-size:.8rem">1/1</span>
+            <button class="btn bg sm" onclick="prevPg(1)">▶</button>
+          </div>
+        </div>
         <div class="legal"><strong>Firma electronica simple - Reglamento eIDAS (UE 910/2014)</strong><br><br>Al firmar confirmas tu identidad y aceptas el contenido. Validez legal conforme al Reglamento UE 910/2014 (eIDAS) y Ley 6/2020. Se registrara: nombre, DNI, IP y timestamp.<br><br><strong>Proteccion de Datos (RGPD)</strong> - Responsable: AsisteHogar (Petra Borondo Martin). Finalidad: gestion de contratos laborales. Conservacion: vigencia relacion laboral + 5 anos. Derechos: acceso, rectificacion, supresion. Reclamaciones: AEPD (aepd.es).</div>
         <div class="con"><input type="checkbox" id="sc1"><label for="sc1"><strong>Consentimiento firma eIDAS:</strong> He leido el documento, acepto firmarlo electronicamente y consiento el registro de mis datos de firma como evidencia legal.</label></div>
         <div class="con"><input type="checkbox" id="sc2"><label for="sc2"><strong>Proteccion de datos:</strong> He sido informado sobre el tratamiento de mis datos conforme al RGPD (UE 2016/679) y LOPDGDD y consiento el tratamiento indicado.</label></div>
@@ -320,12 +337,48 @@ function sbDel(t,q){return fetch(SB+'/rest/v1/'+t+q,{method:'DELETE',headers:H})
 function pubURL(p){return SB+'/storage/v1/object/public/pdfs/'+p;}
 function getIP(){return fetch('https://api.ipify.org?format=json').then(function(r){return r.json();}).then(function(d){return d.ip||'';}).catch(function(){return '';});}
 
+// SHA-256 hash
+async function sha256(buffer){
+  var hb=await crypto.subtle.digest('SHA-256',buffer);
+  return Array.from(new Uint8Array(hb)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+}
+
+// PDF PREVIEW in sign view
+var prevPdfDoc=null,prevPage=1,prevTotal=1;
+function loadPreview(url){
+  fetch(url).then(function(r){return r.ok?r.arrayBuffer():null;}).then(function(buf){
+    if(!buf)return;
+    return pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise.then(function(d){
+      prevPdfDoc=d;prevTotal=d.numPages;prevPage=1;
+      document.getElementById('sign-preview-wrap').style.display='';
+      renderPreview();
+    });
+  }).catch(function(){});
+}
+function renderPreview(){
+  if(!prevPdfDoc)return;
+  prevPdfDoc.getPage(prevPage).then(function(pg){
+    var vp=pg.getViewport({scale:1.0});
+    var c=document.getElementById('prev-canvas');
+    c.width=vp.width;c.height=vp.height;
+    document.getElementById('prev-pg').textContent=prevPage+'/'+prevTotal;
+    pg.render({canvasContext:c.getContext('2d'),viewport:vp});
+  });
+}
+function prevPg(d){var n=prevPage+d;if(n<1||n>prevTotal)return;prevPage=n;renderPreview();}
+
 function upPDF(path,data){
   return fetch(SB+'/storage/v1/object/pdfs/'+path,{
     method:'POST',
     headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/pdf','x-upsert':'true'},
     body:new Blob([data],{type:'application/pdf'})
   }).then(function(r){return r.json();});
+}
+
+async function upPDFWithHash(path,data){
+  var hash=await sha256(data.buffer||data);
+  await upPDF(path,data);
+  return hash;
 }
 
 document.addEventListener('DOMContentLoaded',function(){
@@ -541,18 +594,18 @@ function crearDoc(){
   var cat=document.getElementById('dcat').value;
   var expAt=new Date(Date.now()+parseInt(document.getElementById('dexp').value)*86400000).toISOString();
   ld(true);
-  var paths=[];
-  function uploadNext(i){
+  var paths=[],hashes=[];
+  async function uploadNext(i){
     if(i>=pdfFiles.length){afterUpload();return;}
     var f=pdfFiles[i];
     var path=Date.now()+'_'+Math.random().toString(36).slice(2)+'_'+f.name.replace(/\s/g,'_');
-    upPDF(path,f.data).then(function(r){
-      if(r.error){toast('Error subiendo: '+r.error);ld(false);return;}
-      paths.push({path:path,name:f.name});uploadNext(i+1);
-    }).catch(function(e){toast('Error: '+e.message);ld(false);});
+    try{
+      var hash=await upPDFWithHash(path,f.data);
+      paths.push({path:path,name:f.name});hashes.push(hash);uploadNext(i+1);
+    }catch(e){toast('Error subiendo: '+e.message);ld(false);}
   }
   function afterUpload(){
-    sbPost('documents',{title:title,category:cat,expires_at:expAt,pdf_path:paths[0].path,pdf_paths:paths.map(function(p){return p.path;}),pdf_names:paths.map(function(p){return p.name;})}).then(function(res){
+    sbPost('documents',{title:title,category:cat,expires_at:expAt,pdf_path:paths[0].path,pdf_paths:paths.map(function(p){return p.path;}),pdf_names:paths.map(function(p){return p.name;}),pdf_hashes:hashes}).then(function(res){
       var doc=Array.isArray(res)?res[0]:res;
       if(!doc||!doc.id){toast('Error creando documento');ld(false);return;}
       function addNext(j){
@@ -606,10 +659,21 @@ function verDet(id){
       var link=BASE+'?token='+s.token;
       var msg=encodeURIComponent('Hola '+s.name+', te envío el documento "'+curDoc.title+'" para que lo firmes digitalmente.\n\n📋 PASOS:\n1. Abre el enlace\n2. Escribe tu nombre completo y DNI/NIE\n3. Acepta los dos consentimientos\n4. Pulsa "Continuar a la firma"\n5. En el panel derecho dibuja tu firma o escríbela\n6. Pulsa "Usar"\n7. La firma se colocará automáticamente en tu zona\n8. Pulsa "Confirmar firma"\n\n🔗 Enlace: '+link+'\n\nEste enlace es personal e intransferible.');
       var href=s.phone?'https://wa.me/'+s.phone.replace(/\D/g,'')+'?text='+msg:'https://wa.me/?text='+msg;
-      return'<div style="margin-bottom:10px"><div style="font-size:.76rem;font-weight:600;color:var(--muted);margin-bottom:4px">'+s.name+(s.signed_at?' <span class="badge b-d">Firmado</span>':'')+'</div><div class="lbox">'+link+'<button class="lcopy" onclick="cp(\''+link+'\')">Copiar</button></div><a href="'+href+'" target="_blank" class="btn bwa sm">WhatsApp a '+s.name+'</a></div>';
+      return'<div style="margin-bottom:10px"><div style="font-size:.76rem;font-weight:600;color:var(--muted);margin-bottom:4px">'+s.name+(s.signed_at?' <span class="badge b-d">Firmado</span>':'')+'</div><div class="lbox">'+link+'<button class="lcopy" onclick="cp(\''+link+'\')">Copiar</button></div><a href="'+href+'" target="_blank" class="btn bwa sm">WhatsApp</a> <a href="'+href+'" target="_blank" class="btn bo sm" style="margin-left:4px">Reenviar recordatorio</a></div>';
     }).join('');
     var signed=curSigs.filter(function(s){return s.signed_at;});
-    document.getElementById('aud-tbl').innerHTML=signed.length?'<div class="arow ahead"><span>Firmante</span><span>Fecha/hora</span><span>IP - DNI</span></div>'+signed.map(function(s){return'<div class="arow"><span><b>'+(s.signed_fullname||s.name)+'</b></span><span>'+new Date(s.signed_at).toLocaleString('es-ES')+'</span><span>'+(s.signer_ip||'-')+' - '+(s.signer_dni||'-')+'</span></div>';}).join(''):'<p style="font-size:.8rem;color:var(--muted)">Aun no hay firmas.</p>';
+    // Show hash info
+    var hashes=curDoc.pdf_hashes||[];
+    var hashHtml=hashes.length?'<div style="font-size:.76rem;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:7px 10px;margin-bottom:8px">🔒 <b>Hash SHA-256:</b> '+hashes.map(function(h,i){var n=(curDoc.pdf_names||[])[i]||'Doc '+(i+1);return'<br><span style="font-family:monospace;font-size:.7rem">'+n+': '+h+'</span>';}).join('')+'</div>':'' ;
+    document.getElementById('aud-tbl').innerHTML=hashHtml+(signed.length?'<div class="arow ahead"><span>Firmante</span><span>Fecha/hora</span><span>IP - DNI</span></div>'+signed.map(function(s){return'<div class="arow"><span><b>'+(s.signed_fullname||s.name)+'</b></span><span>'+new Date(s.signed_at).toLocaleString('es-ES')+'</span><span>'+(s.signer_ip||'-')+' - '+(s.signer_dni||'-')+'</span></div>';}).join(''):'<p style="font-size:.8rem;color:var(--muted)">Aun no hay firmas.</p>');
+    // Show pending reminder section
+    var pending=curSigs.filter(function(s){return!s.signed_at;});
+    var now=Date.now();var days=(now-new Date(curDoc.created_at).getTime())/86400000;
+    var remEl=document.getElementById('det-reminder');
+    if(pending.length&&days>2){
+      remEl.style.display='';
+      document.getElementById('det-reminder-body').innerHTML='<p style="font-size:.82rem;margin-bottom:10px">Llevan <b>'+Math.floor(days)+'</b> dias sin firmar:</p>'+pending.map(function(s){var link=BASE+'?token='+s.token;var msg=encodeURIComponent('Recordatorio: Hola '+s.name+', aun tienes pendiente firmar el documento "'+curDoc.title+'".\n\n Enlace: '+link);var href=s.phone?'https://wa.me/'+s.phone.replace(/\D/g,'')+'?text='+msg:'https://wa.me/?text='+msg;return'<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><span style="flex:1;font-size:.86rem;font-weight:500">'+s.name+'</span><a href="'+href+'" target="_blank" class="btn bwa sm">Recordatorio WhatsApp</a></div>';}).join('');
+    } else { remEl.style.display='none'; }
     var ps=curDoc.pdf_paths||[curDoc.pdf_path];var ns=curDoc.pdf_names||ps.map(function(_,i){return'Doc '+(i+1);});
     document.getElementById('det-dl').innerHTML=ps.map(function(p,i){
       return'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span>📄</span><span style="flex:1;font-size:.86rem;font-weight:500">'+ns[i]+'</span><button class="btn bo sm" onclick="dlOrig(\''+p+'\',\''+ns[i]+'\')">Original</button><button class="btn bp sm" onclick="dlSigned(\''+p+'\',\''+ns[i]+'\')">Con firmas</button></div>';
@@ -619,7 +683,16 @@ function verDet(id){
 function dlAudit(){
   var signed=curSigs.filter(function(s){return s.signed_at;});
   if(!signed.length){toast('No hay firmas aun');return;}
-  var txt='REGISTRO DE AUDITORIA\nDocumento: '+curDoc.title+'\nGenerado: '+new Date().toLocaleString('es-ES')+'\n\n';
+  var txt='REGISTRO DE AUDITORIA FIRMAHOGAR\n';
+  txt+='Reglamento UE 910/2014 (eIDAS) - Ley 6/2020\n';
+  txt+='Documento: '+curDoc.title+'\n';
+  txt+='Generado: '+new Date().toLocaleString('es-ES')+'\n';
+  var hashes=curDoc.pdf_hashes||[];
+  if(hashes.length){
+    txt+='\nHASH SHA-256 DEL DOCUMENTO ORIGINAL:\n';
+    hashes.forEach(function(h,i){txt+=(curDoc.pdf_names&&curDoc.pdf_names[i]?curDoc.pdf_names[i]:'Doc '+(i+1))+': '+h+'\n';});
+  }
+  txt+='\n'+'-'.repeat(50)+'\n\n';
   signed.forEach(function(s){txt+='Firmante: '+(s.signed_fullname||s.name)+'\nDNI: '+(s.signer_dni||'-')+'\nFecha: '+new Date(s.signed_at).toLocaleString('es-ES')+'\nIP: '+(s.signer_ip||'-')+'\neIDAS: '+(s.consented?'SI':'NO')+'\nRGPD: '+(s.privacy_accepted?'SI':'NO')+'\n\n';});
   var blob=new Blob([txt],{type:'text/plain;charset=utf-8'});
   var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='auditoria.txt';a.click();URL.revokeObjectURL(url);
@@ -709,10 +782,12 @@ function initSign(token){
         ld(false);return;
       }
       document.getElementById('sign-tit').textContent=signDocData.title;
-      document.getElementById('sign-info').innerHTML='Estas a punto de firmar el documento <b>"'+signDocData.title+'"</b>.';
+      document.getElementById('sign-info').innerHTML='Estas a punto de firmar el documento <b>"'+signDocData.title+'"</b>. Puedes revisar el documento completo antes de firmar.';
       document.getElementById('sign-name').value=signSigner.name;
       signPaths=signDocData.pdf_paths||[signDocData.pdf_path];
       signNames=signDocData.pdf_names||signPaths.map(function(_,i){return'Documento '+(i+1);});
+      // Load PDF preview
+      loadPreview(pubURL(signPaths[0]));
       return getIP().then(function(ip){signerIP=ip;ld(false);});
     });
   }).catch(function(e){toast('Error: '+e.message);ld(false);});
