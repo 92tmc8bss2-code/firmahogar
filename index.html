@@ -761,12 +761,13 @@ function dlSigned(pdfPath,fileName){
         });
         function addSig(i){
           if(i>=allPlacements.length){
-            pages.forEach(function(pg){drawStamp(pg,signers);});
+            pages.forEach(function(pg){drawStamp(pg,curSigs);});
             return pdfDoc.save().then(function(bytes){
-            var blob=new Blob([bytes],{type:'application/pdf'});
-            var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='firmado_'+fileName;a.click();URL.revokeObjectURL(url);
-            toast('PDF descargado');
-          });}
+              var blob=new Blob([bytes],{type:'application/pdf'});
+              var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='firmado_'+fileName;a.click();URL.revokeObjectURL(url);
+              toast('PDF descargado');
+            });
+          }
           var st=allPlacements[i];
           var pgIdx=(st.page||1)-1;var pg=pages[pgIdx];if(!pg)return addSig(i+1);
           var sz=pg.getSize();
