@@ -641,11 +641,12 @@ function crearDoc(){
       function addNext(j){
         if(j>=sData.length){afterDone(doc);return;}
         var s=sData[j];
-        // Find zona for this signer
+        // Find ALL zones for this signer
         var presetData={};
-        var zKey=Object.keys(zonas).find(function(k){return k.split('|')[0]===s.name;});
-        if(zKey){
-          var z=zonas[zKey];var zp=zKey.split('|');
+        var zKeys=Object.keys(zonas).filter(function(k){return k.split('|')[0]===s.name;});
+        if(zKeys.length){
+          // Keep legacy single-zone fields for backwards compat (first zone)
+          var zKey=zKeys[0];var z=zonas[zKey];var zp=zKey.split('|');
           var cW=z.canvasW||document.getElementById('zcc').offsetWidth||300;
           var cH=z.canvasH||document.getElementById('zcc').offsetHeight||400;
           presetData={
@@ -656,6 +657,20 @@ function crearDoc(){
             preset_page:parseInt(zp[2]),
             preset_pdf_path:paths[parseInt(zp[1])]?paths[parseInt(zp[1])].path:paths[0].path
           };
+          // Save ALL zones as JSON array
+          presetData.preset_zones=JSON.stringify(zKeys.map(function(k){
+            var z2=zonas[k];var zp2=k.split('|');
+            var cW2=z2.canvasW||document.getElementById('zcc').offsetWidth||300;
+            var cH2=z2.canvasH||document.getElementById('zcc').offsetHeight||400;
+            return{
+              nx:(z2.x+z2.w/2)/cW2,
+              ny:(z2.y+z2.h/2)/cH2,
+              nw:z2.w/cW2,
+              nh:z2.h/cH2,
+              page:parseInt(zp2[2]),
+              pdfPath:paths[parseInt(zp2[1])]?paths[parseInt(zp2[1])].path:paths[0].path
+            };
+          }));
         }
         sbPost('signers',Object.assign({document_id:doc.id,name:s.name,phone:s.phone||null,signer_expected_dni:s.dni||null},presetData)).then(function(){addNext(j+1);}).catch(function(e){toast('Error: '+e.message);ld(false);});
       }
@@ -949,7 +964,10 @@ function confirmSign(){
   var ny=s.ny!==undefined?s.ny:s.y;
   var nw=s.nw!==undefined?s.nw:s.w;
   var nh=s.nh!==undefined?s.nh:s.h;
-  var allSigs=[{page:s.page||signPage,fi:s.fi,pdfPath:pdfPath,x:nx,y:ny,w:nw,h:nh,url:s.url,normalized:true}];
+  // Build allSigs from preset_zones or fallback to placed page
+  var allSigs=[];
+  if(signSigner.preset_zones){try{var pzones=JSON.parse(signSigner.preset_zones);pzones.forEach(function(z){allSigs.push({page:z.page,fi:s.fi,pdfPath:z.pdfPath||pdfPath,x:z.nx,y:z.ny,w:z.nw,h:z.nh,url:s.url,normalized:true});});}catch(e){}}
+  if(!allSigs.length){allSigs.push({page:s.page||signPage,fi:s.fi,pdfPath:pdfPath,x:nx,y:ny,w:nw,h:nh,url:s.url,normalized:true});}
   sbPatch('signers',signSigner.id,{
     signed_at:new Date().toISOString(),
     signed_fullname:document.getElementById('sign-name').value.trim(),
