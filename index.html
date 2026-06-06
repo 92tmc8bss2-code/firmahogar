@@ -949,11 +949,7 @@ function confirmSign(){
   var ny=s.ny!==undefined?s.ny:s.y;
   var nw=s.nw!==undefined?s.nw:s.w;
   var nh=s.nh!==undefined?s.nh:s.h;
-  // Generate one entry per page with same relative position
-  var allSigs=[];
-  for(var p=1;p<=signTotal;p++){
-    allSigs.push({page:p,fi:s.fi,pdfPath:pdfPath,x:nx,y:ny,w:nw,h:nh,url:s.url,normalized:true});
-  }
+  var allSigs=[{page:s.page||signPage,fi:s.fi,pdfPath:pdfPath,x:nx,y:ny,w:nw,h:nh,url:s.url,normalized:true}];
   sbPatch('signers',signSigner.id,{
     signed_at:new Date().toISOString(),
     signed_fullname:document.getElementById('sign-name').value.trim(),
