@@ -757,17 +757,15 @@ function dlSigned(pdfPath,fileName){
         curSigs.forEach(function(s){
           if(!s.signed_at||!s.signature_data)return;
           var addedFromAllSigs=false;
-          if(s.all_sigs){
-            try{
-              var arr=JSON.parse(s.all_sigs);
-              arr.forEach(function(st){
-                var entryPath=st.pdfPath||s.sig_pdf_path;
-                if(st.normalized&&entryPath===pdfPath){
-                  allPlacements.push({page:st.page,x:st.x,y:st.y,w:st.w,h:st.h,url:st.url||s.signature_data});
-                  addedFromAllSigs=true;
-                }
-              });
-            }catch(e){}
+          var arr=parseSigPlacements(s.all_sigs);
+          if(arr.length){
+            arr.forEach(function(st){
+              var p=placementFromRecord(st,s.sig_pdf_path,s.signature_data);
+              if(p&&samePdfPath(p.pdfPath,pdfPath)){
+                allPlacements.push({page:p.page,x:p.x,y:p.y,w:p.w,h:p.h,url:p.url});
+                addedFromAllSigs=true;
+              }
+            });
           }
           // Fallback per signer: use legacy fields if all_sigs had nothing for this pdf
           if(!addedFromAllSigs&&s.sig_pdf_path===pdfPath){
@@ -814,6 +812,71 @@ var signPage=1,signTotal=1,signScale=1.5,signPdfIdx=0;
 var signStickers=[],signDataURL=null,signMode=null;
 var signPaths=[],signNames=[],drawColor='#1a1410',signerIP='';
 var padDrw=false,padLX,padLY;
+
+
+function safeJson(v){
+  var out=v;
+  for(var i=0;i<3;i++){
+    if(out===undefined||out===null||out==='')return null;
+    if(typeof out==='string'){
+      try{out=JSON.parse(out);}catch(e){return null;}
+    }else{return out;}
+  }
+  return out;
+}
+function pickNum(){
+  for(var i=0;i<arguments.length;i++){
+    var v=arguments[i];
+    if(v!==undefined&&v!==null&&v!==''&&!isNaN(Number(v)))return Number(v);
+  }
+  return null;
+}
+function samePdfPath(a,b){
+  if(!a||!b)return false;
+  a=String(a);b=String(b);
+  return a===b||a.split('/').pop()===b.split('/').pop();
+}
+function pdfIndexByPath(path){
+  if(!path||!signPaths||!signPaths.length)return 0;
+  for(var i=0;i<signPaths.length;i++){if(samePdfPath(signPaths[i],path))return i;}
+  return 0;
+}
+function normalizeZone(z,fallbackPdfPath){
+  if(!z)return null;
+  var nx=pickNum(z.nx,z.x),ny=pickNum(z.ny,z.y),nw=pickNum(z.nw,z.w),nh=pickNum(z.nh,z.h);
+  if(nx===null||ny===null||nw===null||nh===null)return null;
+  return{
+    page:parseInt(z.page||z.preset_page||1,10)||1,
+    pdfPath:z.pdfPath||z.pdf_path||z.preset_pdf_path||fallbackPdfPath||((signPaths&&signPaths[0])?signPaths[0]:''),
+    nx:nx,ny:ny,nw:nw,nh:nh
+  };
+}
+function getPresetZones(){
+  var zones=[];
+  if(signSigner&&signSigner.preset_zones){
+    var parsed=safeJson(signSigner.preset_zones);
+    if(Array.isArray(parsed)){
+      zones=parsed.map(function(z){return normalizeZone(z,signSigner.preset_pdf_path||(signPaths&&signPaths[0]));}).filter(Boolean);
+    }
+  }
+  if(!zones.length&&signSigner&&signSigner.preset_nx!==undefined&&signSigner.preset_nx!==null){
+    var legacy=normalizeZone({
+      nx:signSigner.preset_nx,ny:signSigner.preset_ny,nw:signSigner.preset_nw,nh:signSigner.preset_nh,
+      page:signSigner.preset_page||1,pdfPath:signSigner.preset_pdf_path||((signPaths&&signPaths[0])?signPaths[0]:'')
+    },signPaths&&signPaths[0]);
+    if(legacy)zones.push(legacy);
+  }
+  return zones;
+}
+function parseSigPlacements(value){
+  var parsed=safeJson(value);
+  return Array.isArray(parsed)?parsed:[];
+}
+function placementFromRecord(st,fallbackPdfPath,fallbackUrl){
+  var z=normalizeZone(st,fallbackPdfPath);
+  if(!z)return null;
+  return{page:z.page,pdfPath:z.pdfPath,x:z.nx,y:z.ny,w:z.nw,h:z.nh,url:st.url||fallbackUrl,normalized:true};
+}
 
 function initSign(token){
   showV('sign');ld(true);
@@ -869,14 +932,15 @@ function startSign(){
 
 function loadSPDF(idx){
   ld(true);signPdfIdx=idx;
-  fetch(pubURL(signPaths[idx])).then(function(r){
+  if(document.getElementById('sfsel'))document.getElementById('sfsel').value=idx;
+  return fetch(pubURL(signPaths[idx])).then(function(r){
     if(!r.ok)throw new Error('No se pudo cargar el PDF (HTTP '+r.status+')');
     return r.arrayBuffer();
   }).then(function(buf){
     return pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise.then(function(d){
       signPdfDoc=d;signTotal=d.numPages;signPage=1;return renderSPage();
     });
-  }).catch(function(e){toast('Error PDF: '+e.message);}).finally(function(){ld(false);});
+  }).catch(function(e){toast('Error PDF: '+e.message);throw e;}).finally(function(){ld(false);});
 }
 
 function renderSPage(){
@@ -956,29 +1020,42 @@ function makeRsz(handle,el,idx){
 
 function confirmSign(){
   var valid=signStickers.filter(Boolean);
-  if(!valid.length){toast('Coloca tu firma en el documento');return;}
+  var presetZones=getPresetZones();
+  if(!valid.length&&!presetZones.length){toast('Coloca tu firma en el documento');return;}
+  if(presetZones.length&&!signDataURL){toast('Pulsa Usar para preparar la firma');return;}
   ld(true);
-  var s=valid[valid.length-1];
-  var pdfPath=signPaths[s.fi]||signPaths[0];
-  var nx=s.nx!==undefined?s.nx:s.x;
-  var ny=s.ny!==undefined?s.ny:s.y;
-  var nw=s.nw!==undefined?s.nw:s.w;
-  var nh=s.nh!==undefined?s.nh:s.h;
-  // Build allSigs from preset_zones or fallback to placed page
   var allSigs=[];
-  if(signSigner.preset_zones){try{var pzones=JSON.parse(signSigner.preset_zones);pzones.forEach(function(z){allSigs.push({page:z.page,fi:s.fi,pdfPath:z.pdfPath||pdfPath,x:z.nx,y:z.ny,w:z.nw,h:z.nh,url:s.url,normalized:true});});}catch(e){}}
-  if(!allSigs.length){allSigs.push({page:s.page||signPage,fi:s.fi,pdfPath:pdfPath,x:nx,y:ny,w:nw,h:nh,url:s.url,normalized:true});}
+  var sigUrl=signDataURL||(valid.length?valid[valid.length-1].url:null);
+  if(presetZones.length){
+    presetZones.forEach(function(z){
+      allSigs.push({page:z.page,fi:pdfIndexByPath(z.pdfPath),pdfPath:z.pdfPath,x:z.nx,y:z.ny,w:z.nw,h:z.nh,url:sigUrl,normalized:true});
+    });
+  }else{
+    valid.forEach(function(st){
+      var pdfPath=signPaths[st.fi]||signPaths[0];
+      allSigs.push({
+        page:st.page||signPage,fi:st.fi,pdfPath:pdfPath,
+        x:st.nx!==undefined?st.nx:st.x,
+        y:st.ny!==undefined?st.ny:st.y,
+        w:st.nw!==undefined?st.nw:st.w,
+        h:st.nh!==undefined?st.nh:st.h,
+        url:st.url,normalized:true
+      });
+    });
+  }
+  if(!allSigs.length){toast('No se pudo preparar ninguna zona de firma');ld(false);return;}
+  var first=allSigs[0];
   sbPatch('signers',signSigner.id,{
     signed_at:new Date().toISOString(),
     signed_fullname:document.getElementById('sign-name').value.trim(),
     signer_dni:document.getElementById('sign-dni').value.trim()||null,
-    signature_data:s.url,
+    signature_data:sigUrl,
     signer_ip:signerIP,
     consented:true,
     privacy_accepted:true,
-    sig_page:s.page,
-    sig_pdf_path:pdfPath,
-    sig_x:nx,sig_y:ny,sig_w:nw,sig_h:nh,
+    sig_page:first.page,
+    sig_pdf_path:first.pdfPath,
+    sig_x:first.x,sig_y:first.y,sig_w:first.w,sig_h:first.h,
     all_sigs:JSON.stringify(allSigs)
   }).then(function(){showV('ok');checkAllSigned();}).catch(function(e){toast('Error: '+e.message);}).finally(function(){ld(false);});
 }
@@ -1021,17 +1098,15 @@ function dlPublic(pdfPath,fileName,docId){
           signers.forEach(function(s){
             if(!s.signature_data)return;
             var addedFromAllSigs=false;
-            if(s.all_sigs){
-              try{
-                var arr=JSON.parse(s.all_sigs);
-                arr.forEach(function(st){
-                  var entryPath=st.pdfPath||s.sig_pdf_path;
-                  if(st.normalized&&entryPath===pdfPath){
-                    allPlacements.push({page:st.page,x:st.x,y:st.y,w:st.w,h:st.h,url:st.url||s.signature_data});
-                    addedFromAllSigs=true;
-                  }
-                });
-              }catch(e){}
+            var arr=parseSigPlacements(s.all_sigs);
+            if(arr.length){
+              arr.forEach(function(st){
+                var p=placementFromRecord(st,s.sig_pdf_path,s.signature_data);
+                if(p&&samePdfPath(p.pdfPath,pdfPath)){
+                  allPlacements.push({page:p.page,x:p.x,y:p.y,w:p.w,h:p.h,url:p.url});
+                  addedFromAllSigs=true;
+                }
+              });
             }
             // Fallback per signer
             if(!addedFromAllSigs&&s.sig_pdf_path===pdfPath){
@@ -1041,7 +1116,7 @@ function dlPublic(pdfPath,fileName,docId){
           function addSig(i){
             if(i>=allPlacements.length){
               // Add stamp to all pages after all signatures
-              pages.forEach(function(pg){drawStamp(pg,curSigs);});
+              pages.forEach(function(pg){drawStamp(pg,signers);});
               return pdfDoc.save().then(function(bytes){
               var blob=new Blob([bytes],{type:'application/pdf'});
               var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='firmado_'+fileName;a.click();URL.revokeObjectURL(url);toast('PDF descargado');
@@ -1104,30 +1179,24 @@ function useSig(type){
   if(type==='draw'){url=trimCanvas(document.getElementById('sigpad'));if(!url){toast('Dibuja tu firma primero');return;}}
   else{var t=document.getElementById('sigtxt').value.trim();if(!t){toast('Escribe tu firma');return;}var tc=document.createElement('canvas');tc.width=300;tc.height=90;var tctx=tc.getContext('2d');tctx.clearRect(0,0,300,90);tctx.font='bold 52px serif';tctx.fillStyle=drawColor;tctx.textBaseline='middle';tctx.fillText(t,8,45);url=tc.toDataURL('image/png');}
   signDataURL=url;
-  // If there's a preset zone, auto-place the signature there
-  if(signSigner&&signSigner.preset_nx!==undefined&&signSigner.preset_nx!==null){
-    var canvas=document.getElementById('scc');
-    var rect=canvas.getBoundingClientRect();
-    // Convert normalized preset to CSS pixels on current canvas
-    var px=signSigner.preset_nx*rect.width;
-    var py=signSigner.preset_ny*rect.height;
-    var pw=signSigner.preset_nw*rect.width;
-    var ph=signSigner.preset_nh*rect.height;
-    // Navigate to preset page if needed
-    var presetPage=signSigner.preset_page||1;
-    if(signPage!==presetPage){
-      signPage=presetPage;
+  var zones=getPresetZones();
+  if(zones.length){
+    var z=zones[0];
+    var idx=pdfIndexByPath(z.pdfPath);
+    var showFirstZone=function(){
+      signPage=Math.max(1,Math.min(z.page||1,signTotal||z.page||1));
       renderSPage().then(function(){
-        var canvas2=document.getElementById('scc');
-        var rect2=canvas2.getBoundingClientRect();
-        placeSticker(signSigner.preset_nx*rect2.width,signSigner.preset_ny*rect2.height,url,signSigner.preset_nw*rect2.width,signSigner.preset_nh*rect2.height);
+        var canvas=document.getElementById('scc');
+        var rect=canvas.getBoundingClientRect();
+        placeSticker(z.nx*rect.width,z.ny*rect.height,url,z.nw*rect.width,z.nh*rect.height);
         document.getElementById('btn-ok').disabled=false;
-        toast('Firma colocada en la zona predefinida');
+        toast(zones.length>1?'Firma preparada para '+zones.length+' zonas marcadas':'Firma colocada en la zona predefinida');
       });
-    } else {
-      placeSticker(px,py,url,pw,ph);
-      document.getElementById('btn-ok').disabled=false;
-      toast('Firma colocada en la zona predefinida');
+    };
+    if(idx!==signPdfIdx||!signPdfDoc){
+      loadSPDF(idx).then(showFirstZone).catch(function(){});
+    }else{
+      showFirstZone();
     }
   } else {
     signMode='pending';
