@@ -60,12 +60,21 @@ h2{font-family:'Playfair Display',serif;font-size:1.5rem;margin-bottom:6px}
 .ss-t{font-size:.74rem;color:var(--muted)}
 .lbox{background:var(--cream);border:1px solid var(--border);border-radius:7px;padding:8px 10px;font-size:.76rem;font-family:monospace;word-break:break-all;position:relative;margin-bottom:6px}
 .lcopy{position:absolute;top:5px;right:5px;background:var(--amber);color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:.7rem;cursor:pointer;font-weight:600}
-.pdfwrap{background:#bbb;border-radius:8px;padding:10px;display:flex;justify-content:center;min-height:300px;overflow:auto}
-#sc{position:relative;display:inline-block;cursor:crosshair}
-#sc canvas{display:block;max-width:100%}
-#so{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
-.stk{position:absolute;cursor:move;pointer-events:all;border:2px dashed transparent;user-select:none}
-.stk:hover,.stk.sel{border-color:var(--amber);border-radius:4px}
+.pdfwrap{background:#bbb;border-radius:8px;padding:10px;display:flex;justify-content:center;align-items:flex-start;min-height:300px;overflow:auto}
+.pdfpages{display:flex;flex-direction:column;align-items:center;gap:14px;width:100%}
+.pdfpage,.sign-page{position:relative;display:inline-block;max-width:100%;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.18)}
+.pdfpage canvas,.sign-page canvas,#sc canvas{display:block;max-width:100%;height:auto}
+.pglabel{position:absolute;top:6px;left:6px;background:rgba(26,20,16,.78);color:#fff;border-radius:999px;padding:2px 8px;font-size:.68rem;font-weight:700;z-index:2}
+#sc{position:relative;display:flex;flex-direction:column;align-items:center;gap:14px;width:100%;cursor:default}
+#sc.sign-ready{cursor:crosshair}
+.sov{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
+.docpick{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.docbtn{display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:8px;border:1.5px solid var(--border);background:#fff;color:var(--ink);font-size:.78rem;font-weight:600;cursor:pointer;max-width:100%}
+.docbtn.on{border-color:var(--amber);background:#fffbf4;color:var(--amber3)}
+.docbtn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:210px}
+.prevbox{background:#bbb;border-radius:8px;padding:8px;max-height:460px;overflow:auto;display:flex;justify-content:center}
+.stk{position:absolute;cursor:default;pointer-events:none;border:2px solid rgba(21,128,61,.65);border-radius:4px;user-select:none;background:rgba(21,128,61,.08)}
+.stk:hover,.stk.sel{border-color:rgba(21,128,61,.65);border-radius:4px}
 .stk img{display:block;width:100%;height:100%;object-fit:contain}
 .dx{display:none;position:absolute;top:-9px;right:-9px;width:20px;height:20px;background:var(--red);border-radius:50%;color:#fff;font-size:12px;align-items:center;justify-content:center;cursor:pointer;border:none;font-weight:700;z-index:10}
 .stk:hover .dx,.stk.sel .dx{display:flex}
@@ -236,17 +245,12 @@ h2{font-family:'Playfair Display',serif;font-size:1.5rem;margin-bottom:6px}
         <div class="fld"><label>Tu nombre completo *</label><input type="text" id="sign-name" placeholder="Nombre y apellidos"></div>
         <div class="fld"><label>DNI / NIE *</label><input type="text" id="sign-dni" placeholder="Ej: 12345678A"></div>
         <div id="sign-preview-wrap" style="margin-bottom:12px;display:none">
-          <div style="font-size:.76rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Vista previa del documento</div>
-          <div style="background:#bbb;border-radius:8px;padding:8px;max-height:320px;overflow:auto;display:flex;justify-content:center">
-            <div id="prev-cont" style="position:relative;display:inline-block">
-              <canvas id="prev-canvas" style="display:block;max-width:100%"></canvas>
-            </div>
+          <div style="font-size:.76rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Archivos que vas a firmar</div>
+          <div id="sign-file-list" class="docpick"></div>
+          <div class="prevbox">
+            <div id="prev-cont" class="pdfpages"><div class="empty" style="background:#fff;border-radius:8px;width:100%">Cargando vista previa...</div></div>
           </div>
-          <div style="display:flex;gap:6px;align-items:center;margin-top:6px;justify-content:center">
-            <button class="btn bg sm" onclick="prevPg(-1)">◀</button>
-            <span id="prev-pg" style="font-size:.8rem">1/1</span>
-            <button class="btn bg sm" onclick="prevPg(1)">▶</button>
-          </div>
+          <div id="prev-pg" style="font-size:.76rem;color:var(--muted);margin-top:6px;text-align:center">Selecciona un archivo para leerlo completo con scroll.</div>
         </div>
         <div class="legal"><strong>Firma electronica simple - Reglamento eIDAS (UE 910/2014)</strong><br><br>Al firmar confirmas tu identidad y aceptas el contenido. Validez legal conforme al Reglamento UE 910/2014 (eIDAS) y Ley 6/2020. Se registrara: nombre, DNI, IP y timestamp.<br><br><strong>Proteccion de Datos (RGPD)</strong> - Responsable: AsisteHogar (Petra Borondo Martin). Finalidad: gestion de contratos laborales. Conservacion: vigencia relacion laboral + 5 anos. Derechos: acceso, rectificacion, supresion. Reclamaciones: AEPD (aepd.es).</div>
         <div class="con"><input type="checkbox" id="sc1"><label for="sc1"><strong>Consentimiento firma eIDAS:</strong> He leido el documento, acepto firmarlo electronicamente y consiento el registro de mis datos de firma como evidencia legal.</label></div>
@@ -263,13 +267,11 @@ h2{font-family:'Playfair Display',serif;font-size:1.5rem;margin-bottom:6px}
       <div class="ws-p">
         <div class="card" style="margin-bottom:8px">
           <div class="cb" style="padding:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-            <button class="btn bg sm" onclick="spg(-1)">◀</button>
-            <span id="spg-i" style="font-size:.8rem;min-width:45px;text-align:center">1/1</span>
-            <button class="btn bg sm" onclick="spg(1)">▶</button>
-            <span style="font-size:.73rem;color:var(--muted);margin-left:4px">Coloca la firma — se aplicará a todas las páginas al confirmar</span>
+            <span id="spg-i" style="font-size:.8rem;min-width:90px;text-align:left;font-weight:600">0 paginas</span>
+            <span style="font-size:.73rem;color:var(--muted);margin-left:4px">Lee el PDF con scroll. La firma se colocara automaticamente en las zonas marcadas previamente.</span>
           </div>
         </div>
-        <div class="pdfwrap"><div id="sc"><canvas id="scc"></canvas><div id="so"></div></div></div>
+        <div class="pdfwrap"><div id="sc" class="pdfpages"></div></div>
       </div>
       <div class="ws-s">
         <div class="card" style="margin-bottom:10px">
@@ -298,7 +300,7 @@ h2{font-family:'Playfair Display',serif;font-size:1.5rem;margin-bottom:6px}
         </div>
         <div class="card">
           <div class="cb">
-            <div class="info" style="margin-bottom:8px;font-size:.79rem">1. Dibuja tu firma y pulsa <b>Usar</b><br>2. Haz clic en el PDF donde quieres colocarla<br>3. Arrastra para ajustar posicion<br>4. Pulsa <b>Confirmar firma</b></div>
+            <div class="info" style="margin-bottom:8px;font-size:.79rem">1. Dibuja o escribe tu firma<br>2. Pulsa <b>Usar</b><br>3. Revisa que aparece en la zona marcada<br>4. Pulsa <b>Confirmar firma</b></div>
             <button class="btn bgreen" style="width:100%" id="btn-ok" onclick="confirmSign()" disabled>Confirmar firma</button>
           </div>
         </div>
@@ -344,28 +346,65 @@ async function sha256(buffer){
 }
 
 // PDF PREVIEW in sign view
-var prevPdfDoc=null,prevPage=1,prevTotal=1;
-function loadPreview(url){
-  fetch(url).then(function(r){return r.ok?r.arrayBuffer():null;}).then(function(buf){
-    if(!buf)return;
+var prevPdfDoc=null,prevFileIdx=0,prevTotal=1,prevRenderRun=0;
+function renderPreviewFiles(){
+  var wrap=document.getElementById('sign-preview-wrap');
+  var list=document.getElementById('sign-file-list');
+  if(!wrap||!list||!signPaths.length)return;
+  wrap.style.display='';
+  list.innerHTML=signPaths.map(function(p,i){
+    var nm=escHtml((signNames&&signNames[i])?signNames[i]:'Documento '+(i+1));
+    return '<button type="button" class="docbtn'+(i===prevFileIdx?' on':'')+'" onclick="loadPreview('+i+')"><span>📄 '+nm+'</span></button><a class="btn bo sm" href="'+pubURL(p)+'" target="_blank" rel="noopener">Abrir</a>';
+  }).join('');
+}
+function loadPreview(idx){
+  if(typeof idx!=='number')idx=0;
+  if(!signPaths[idx])return;
+  prevFileIdx=idx;prevRenderRun++;
+  var run=prevRenderRun;
+  renderPreviewFiles();
+  var cont=document.getElementById('prev-cont');
+  var pgInfo=document.getElementById('prev-pg');
+  if(cont)cont.innerHTML='<div class="empty" style="background:#fff;border-radius:8px;width:100%">Cargando vista previa...</div>';
+  if(pgInfo)pgInfo.textContent='Cargando '+((signNames&&signNames[idx])?signNames[idx]:'Documento '+(idx+1))+'...';
+  fetch(pubURL(signPaths[idx])).then(function(r){return r.ok?r.arrayBuffer():null;}).then(function(buf){
+    if(!buf||run!==prevRenderRun)return;
     return pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise.then(function(d){
-      prevPdfDoc=d;prevTotal=d.numPages;prevPage=1;
-      document.getElementById('sign-preview-wrap').style.display='';
-      renderPreview();
+      if(run!==prevRenderRun)return;
+      prevPdfDoc=d;prevTotal=d.numPages;
+      return renderPreview(run);
     });
-  }).catch(function(){});
+  }).catch(function(){if(cont)cont.innerHTML='<div class="empty" style="background:#fff;border-radius:8px;width:100%">No se pudo cargar la vista previa.</div>';});
 }
-function renderPreview(){
-  if(!prevPdfDoc)return;
-  prevPdfDoc.getPage(prevPage).then(function(pg){
-    var vp=pg.getViewport({scale:1.0});
-    var c=document.getElementById('prev-canvas');
-    c.width=vp.width;c.height=vp.height;
-    document.getElementById('prev-pg').textContent=prevPage+'/'+prevTotal;
-    pg.render({canvasContext:c.getContext('2d'),viewport:vp});
-  });
+function renderPreview(run){
+  if(!prevPdfDoc)return Promise.resolve();
+  var cont=document.getElementById('prev-cont');
+  var pgInfo=document.getElementById('prev-pg');
+  if(!cont)return Promise.resolve();
+  cont.innerHTML='';
+  if(pgInfo)pgInfo.textContent=((signNames&&signNames[prevFileIdx])?signNames[prevFileIdx]:'Documento '+(prevFileIdx+1))+' · '+prevTotal+' pagina(s) · lectura con scroll';
+  var tasks=[];
+  for(var p=1;p<=prevTotal;p++){
+    (function(pageNum){
+      var box=document.createElement('div');box.className='pdfpage';
+      var lab=document.createElement('div');lab.className='pglabel';lab.textContent='Pagina '+pageNum;
+      var c=document.createElement('canvas');
+      box.appendChild(lab);box.appendChild(c);cont.appendChild(box);
+      tasks.push(prevPdfDoc.getPage(pageNum).then(function(pg){
+        if(run!==prevRenderRun)return;
+        var vp=pg.getViewport({scale:1.0});
+        c.width=vp.width;c.height=vp.height;
+        return pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
+      }));
+    })(p);
+  }
+  return Promise.all(tasks);
 }
-function prevPg(d){var n=prevPage+d;if(n<1||n>prevTotal)return;prevPage=n;renderPreview();}
+function prevPg(d){
+  var n=prevFileIdx+d;
+  if(n<0||n>=signPaths.length)return;
+  loadPreview(n);
+}
 
 
 // Draw digital signature stamp on PDF page
@@ -430,13 +469,12 @@ document.addEventListener('DOMContentLoaded',function(){
   var sc=document.getElementById('sc');
   if(sc){
     sc.addEventListener('click',function(e){
-      if(signMode!=='pending')return;
-      var canvas=document.getElementById('scc');
-      var rect=canvas.getBoundingClientRect();
-      var x=e.clientX-rect.left,y=e.clientY-rect.top;
-      placeSticker(x,y,signDataURL,160,60);
-      signMode=null;sc.style.cursor='default';
-      document.getElementById('btn-ok').disabled=false;
+      // El firmante no decide la posicion: se usan solo las zonas predefinidas por el administrador.
+      if(signMode==='pending'){
+        signMode=null;
+        sc.classList.remove('sign-ready');
+        toast('La posicion de la firma ya esta definida. Pulsa Usar y despues Confirmar firma.');
+      }
     });
   }
 });
@@ -914,8 +952,10 @@ function initSign(token){
       document.getElementById('sign-name').value=signSigner.name;
       signPaths=signDocData.pdf_paths||[signDocData.pdf_path];
       signNames=signDocData.pdf_names||signPaths.map(function(_,i){return'Documento '+(i+1);});
-      // Load PDF preview
-      loadPreview(pubURL(signPaths[0]));
+      // Load all signer-visible PDF options and the first complete scroll preview
+      prevFileIdx=0;
+      renderPreviewFiles();
+      loadPreview(0);
       return getIP().then(function(ip){signerIP=ip;ld(false);});
     });
   }).catch(function(e){toast('Error: '+e.message);ld(false);});
@@ -942,6 +982,9 @@ function startSign(){
   }
   loadSPDF(0);
   initPad();
+  if(!getPresetZones().length){
+    toast('Aviso: este firmante no tiene zona de firma definida.');
+  }
 }
 
 function loadSPDF(idx){
@@ -957,58 +1000,121 @@ function loadSPDF(idx){
   }).catch(function(e){toast('Error PDF: '+e.message);throw e;}).finally(function(){ld(false);});
 }
 
+function getSignPageBox(page){
+  return document.querySelector('#sc .sign-page[data-page="'+page+'"]');
+}
 function renderSPage(){
-  // Clear visual stickers when changing page - they are just visual aids
-  document.getElementById('so').innerHTML='';
-  return signPdfDoc.getPage(signPage).then(function(pg){
-    var vp=pg.getViewport({scale:signScale});
-    var c=document.getElementById('scc');c.width=vp.width;c.height=vp.height;
-    document.getElementById('spg-i').textContent=signPage+'/'+signTotal;
-    return pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
+  if(!signPdfDoc)return Promise.resolve();
+  var cont=document.getElementById('sc');
+  cont.innerHTML='';
+  document.getElementById('spg-i').textContent=signTotal+' pagina(s)';
+  var tasks=[];
+  for(var p=1;p<=signTotal;p++){
+    (function(pageNum){
+      var box=document.createElement('div');box.className='sign-page';box.dataset.page=pageNum;
+      var lab=document.createElement('div');lab.className='pglabel';lab.textContent='Pagina '+pageNum;
+      var c=document.createElement('canvas');
+      var ov=document.createElement('div');ov.className='sov';
+      box.appendChild(lab);box.appendChild(c);box.appendChild(ov);cont.appendChild(box);
+      tasks.push(signPdfDoc.getPage(pageNum).then(function(pg){
+        var vp=pg.getViewport({scale:signScale});
+        c.width=vp.width;c.height=vp.height;
+        return pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
+      }));
+    })(p);
+  }
+  return Promise.all(tasks).then(function(){restoreStickersForCurrentPdf();});
+}
+function restoreStickersForCurrentPdf(){
+  var presetZones=getPresetZones();
+  if(signDataURL&&presetZones.length){
+    renderPresetPreviewForCurrentPdf();
+    document.getElementById('btn-ok').disabled=false;
+  }else{
+    document.getElementById('btn-ok').disabled=true;
+  }
+}
+
+function renderPresetPreviewForCurrentPdf(){
+  if(!signDataURL)return;
+  var zones=getPresetZones().filter(function(z){return pdfIndexByPath(z.pdfPath)===signPdfIdx;});
+  zones.forEach(function(z){
+    var pageBox=getSignPageBox(z.page||1);
+    var canvas=pageBox?pageBox.querySelector('canvas'):null;
+    if(!pageBox||!canvas)return;
+    addStickerElement({
+      nx:z.nx,ny:z.ny,nw:z.nw,nh:z.nh,
+      url:signDataURL,page:z.page||1,fi:signPdfIdx
+    },-1);
   });
 }
-function spg(d){var n=signPage+d;if(n<1||n>signTotal)return;signPage=n;renderSPage();}
+function spg(d){
+  var n=Math.max(1,Math.min(signTotal,signPage+d));
+  var box=getSignPageBox(n);if(box){signPage=n;box.scrollIntoView({behavior:'smooth',block:'center'});}
+}
 
 // sc click handler moved to DOMContentLoaded
 
-function placeSticker(x,y,url,W,H,scaleX,scaleY,canvasW,canvasH){
-  W=W||160;H=H||60;scaleX=scaleX||1;scaleY=scaleY||1;
-  var canvas=document.getElementById('scc');
-  canvasW=canvasW||canvas.width;canvasH=canvasH||canvas.height;
-  // Display position: clamp to canvas CSS bounds (x,y are CSS pixels from canvas rect)
+function addStickerElement(st,idx){
+  var pageBox=getSignPageBox(st.page||1);
+  if(!pageBox)return;
+  var canvas=pageBox.querySelector('canvas');
+  var ov=pageBox.querySelector('.sov');
+  if(!canvas||!ov)return;
+  if(st.el&&st.el.parentNode)st.el.remove();
   var rect=canvas.getBoundingClientRect();
-  var sx=Math.min(Math.max(x-W/2,0),rect.width-W);
-  var sy=Math.min(Math.max(y-H/2,0),rect.height-H);
-  // Normalized coords: use x,y directly (CSS pixels from canvas), divide by canvas CSS size
-  var nx=(x)/rect.width;
-  var ny=(y)/rect.height;
-  var nw=W/rect.width;
-  var nh=H/rect.height;
-  var idx=signStickers.length;
+  var W=(st.nw||0.2)*rect.width;
+  var H=(st.nh||0.08)*rect.height;
+  var sx=Math.min(Math.max((st.nx||0.5)*rect.width-W/2,0),Math.max(0,rect.width-W));
+  var sy=Math.min(Math.max((st.ny||0.5)*rect.height-H/2,0),Math.max(0,rect.height-H));
   var el=document.createElement('div');el.className='stk';
   el.style.cssText='left:'+sx+'px;top:'+sy+'px;width:'+W+'px;height:'+H+'px;';
-  var img=document.createElement('img');img.src=url;el.appendChild(img);
-  var dx=document.createElement('button');dx.className='dx';dx.textContent='x';
-  dx.onclick=function(e){e.stopPropagation();el.remove();signStickers[idx]=null;if(!signStickers.some(Boolean))document.getElementById('btn-ok').disabled=true;};
-  el.appendChild(dx);
-  var rh=document.createElement('div');rh.className='rsz';el.appendChild(rh);
-  document.getElementById('so').appendChild(el);
-  signStickers.push({el:el,x:sx,y:sy,w:W,h:H,nx:nx,ny:ny,nw:nw,nh:nh,url:url,page:signPage,fi:signPdfIdx});
-  makeDrag(el,idx);makeRsz(rh,el,idx);
+  var img=document.createElement('img');img.src=st.url;el.appendChild(img);
+  ov.appendChild(el);
+  st.el=el;st.x=sx;st.y=sy;st.w=W;st.h=H;st.page=parseInt(pageBox.dataset.page||st.page||1,10)||1;st.fi=st.fi===undefined?signPdfIdx:st.fi;
+}
+function placeSticker(x,y,url,W,H,scaleX,scaleY,canvasW,canvasH,pageBox){
+  pageBox=pageBox||getSignPageBox(signPage)||document.querySelector('#sc .sign-page');
+  if(!pageBox)return;
+  var canvas=pageBox.querySelector('canvas');
+  if(!canvas)return;
+  var rect=canvas.getBoundingClientRect();
+  W=W||160;H=H||60;
+  var st={
+    nx:x/rect.width,ny:y/rect.height,nw:W/rect.width,nh:H/rect.height,
+    url:url,page:parseInt(pageBox.dataset.page||'1',10)||1,fi:signPdfIdx
+  };
+  var idx=signStickers.length;
+  signStickers.push(st);
+  addStickerElement(st,idx);
 }
 
+function updateStickerFromElement(el,idx){
+  if(!signStickers[idx])return;
+  var pageBox=el.closest('.sign-page');var canvas=pageBox?pageBox.querySelector('canvas'):null;
+  if(!canvas)return;
+  var rect=canvas.getBoundingClientRect();
+  var nx=parseInt(el.style.left,10)||0,ny=parseInt(el.style.top,10)||0;
+  signStickers[idx].x=nx;signStickers[idx].y=ny;
+  signStickers[idx].page=parseInt(pageBox.dataset.page||'1',10)||1;
+  signStickers[idx].fi=signPdfIdx;
+  signStickers[idx].nx=(nx+el.offsetWidth/2)/rect.width;
+  signStickers[idx].ny=(ny+el.offsetHeight/2)/rect.height;
+  signStickers[idx].nw=el.offsetWidth/rect.width;
+  signStickers[idx].nh=el.offsetHeight/rect.height;
+}
 function makeDrag(el,idx){
   var ox,oy,sx,sy;
   el.addEventListener('mousedown',function(e){
     if(e.target.tagName==='BUTTON'||e.target.className==='rsz')return;
-    e.preventDefault();ox=parseInt(el.style.left);oy=parseInt(el.style.top);sx=e.clientX;sy=e.clientY;el.classList.add('sel');
-    var mv=function(e){var cont=document.getElementById('sc');var canvas=document.getElementById('scc');var nx=Math.min(Math.max(ox+e.clientX-sx,0),cont.offsetWidth-el.offsetWidth);var ny=Math.min(Math.max(oy+e.clientY-sy,0),cont.offsetHeight-el.offsetHeight);el.style.left=nx+'px';el.style.top=ny+'px';if(signStickers[idx]){signStickers[idx].x=nx;signStickers[idx].y=ny;var rect=canvas.getBoundingClientRect();signStickers[idx].nx=(nx+el.offsetWidth/2)/rect.width;signStickers[idx].ny=(ny+el.offsetHeight/2)/rect.height;signStickers[idx].nw=el.offsetWidth/rect.width;signStickers[idx].nh=el.offsetHeight/rect.height;}};
-    var up=function(){document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);};
+    e.preventDefault();ox=parseInt(el.style.left,10)||0;oy=parseInt(el.style.top,10)||0;sx=e.clientX;sy=e.clientY;el.classList.add('sel');
+    var mv=function(e){var cont=el.parentElement;var nx=Math.min(Math.max(ox+e.clientX-sx,0),Math.max(0,cont.offsetWidth-el.offsetWidth));var ny=Math.min(Math.max(oy+e.clientY-sy,0),Math.max(0,cont.offsetHeight-el.offsetHeight));el.style.left=nx+'px';el.style.top=ny+'px';updateStickerFromElement(el,idx);};
+    var up=function(){el.classList.remove('sel');document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);};
     document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
   });
   el.addEventListener('touchstart',function(e){
-    var t=e.touches[0];ox=parseInt(el.style.left);oy=parseInt(el.style.top);sx=t.clientX;sy=t.clientY;
-    var mv=function(e){e.preventDefault();var tt=e.touches[0];var cont=document.getElementById('sc');var canvas=document.getElementById('scc');var nx=Math.min(Math.max(ox+tt.clientX-sx,0),cont.offsetWidth-el.offsetWidth);var ny=Math.min(Math.max(oy+tt.clientY-sy,0),cont.offsetHeight-el.offsetHeight);el.style.left=nx+'px';el.style.top=ny+'px';if(signStickers[idx]){signStickers[idx].x=nx;signStickers[idx].y=ny;var rect=canvas.getBoundingClientRect();signStickers[idx].nx=(nx+el.offsetWidth/2)/rect.width;signStickers[idx].ny=(ny+el.offsetHeight/2)/rect.height;signStickers[idx].nw=el.offsetWidth/rect.width;signStickers[idx].nh=el.offsetHeight/rect.height;}};
+    var t=e.touches[0];ox=parseInt(el.style.left,10)||0;oy=parseInt(el.style.top,10)||0;sx=t.clientX;sy=t.clientY;
+    var mv=function(e){e.preventDefault();var tt=e.touches[0];var cont=el.parentElement;var nx=Math.min(Math.max(ox+tt.clientX-sx,0),Math.max(0,cont.offsetWidth-el.offsetWidth));var ny=Math.min(Math.max(oy+tt.clientY-sy,0),Math.max(0,cont.offsetHeight-el.offsetHeight));el.style.left=nx+'px';el.style.top=ny+'px';updateStickerFromElement(el,idx);};
     var up=function(){document.removeEventListener('touchmove',mv);document.removeEventListener('touchend',up);};
     document.addEventListener('touchmove',mv,{passive:false});document.addEventListener('touchend',up);
   },{passive:true});
@@ -1017,15 +1123,11 @@ function makeRsz(handle,el,idx){
   handle.addEventListener('mousedown',function(e){
     e.preventDefault();e.stopPropagation();var sx=e.clientX,sy=e.clientY,sw=el.offsetWidth,sh=el.offsetHeight;
     var mv=function(e){
-      var nw=Math.max(50,sw+e.clientX-sx);var nh=Math.max(20,sh+e.clientY-sy);
-      el.style.width=nw+'px';el.style.height=nh+'px';
-      if(signStickers[idx]){
-        signStickers[idx].w=nw;signStickers[idx].h=nh;
-        var canvas=document.getElementById('scc');var rect=canvas.getBoundingClientRect();
-        var cx=parseInt(el.style.left)+nw/2;var cy=parseInt(el.style.top)+nh/2;
-        signStickers[idx].nx=cx/rect.width;signStickers[idx].ny=cy/rect.height;
-        signStickers[idx].nw=nw/rect.width;signStickers[idx].nh=nh/rect.height;
-      }
+      var cont=el.parentElement;
+      var maxW=Math.max(50,cont.offsetWidth-(parseInt(el.style.left,10)||0));
+      var maxH=Math.max(20,cont.offsetHeight-(parseInt(el.style.top,10)||0));
+      var nw=Math.min(maxW,Math.max(50,sw+e.clientX-sx));var nh=Math.min(maxH,Math.max(20,sh+e.clientY-sy));
+      el.style.width=nw+'px';el.style.height=nh+'px';updateStickerFromElement(el,idx);
     };
     var up=function(){document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);};
     document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
@@ -1033,30 +1135,15 @@ function makeRsz(handle,el,idx){
 }
 
 function confirmSign(){
-  var valid=signStickers.filter(Boolean);
   var presetZones=getPresetZones();
-  if(!valid.length&&!presetZones.length){toast('Coloca tu firma en el documento');return;}
-  if(presetZones.length&&!signDataURL){toast('Pulsa Usar para preparar la firma');return;}
+  if(!presetZones.length){toast('No hay ninguna zona de firma definida. Contacta con quien te envio el documento.');return;}
+  if(!signDataURL){toast('Pulsa Usar para preparar la firma');return;}
   ld(true);
+  var sigUrl=signDataURL;
   var allSigs=[];
-  var sigUrl=signDataURL||(valid.length?valid[valid.length-1].url:null);
-  if(presetZones.length){
-    presetZones.forEach(function(z){
-      allSigs.push({page:z.page,fi:pdfIndexByPath(z.pdfPath),pdfPath:z.pdfPath,x:z.nx,y:z.ny,w:z.nw,h:z.nh,url:sigUrl,normalized:true});
-    });
-  }else{
-    valid.forEach(function(st){
-      var pdfPath=signPaths[st.fi]||signPaths[0];
-      allSigs.push({
-        page:st.page||signPage,fi:st.fi,pdfPath:pdfPath,
-        x:st.nx!==undefined?st.nx:st.x,
-        y:st.ny!==undefined?st.ny:st.y,
-        w:st.nw!==undefined?st.nw:st.w,
-        h:st.nh!==undefined?st.nh:st.h,
-        url:st.url,normalized:true
-      });
-    });
-  }
+  presetZones.forEach(function(z){
+    allSigs.push({page:z.page,fi:pdfIndexByPath(z.pdfPath),pdfPath:z.pdfPath,x:z.nx,y:z.ny,w:z.nw,h:z.nh,url:sigUrl,normalized:true});
+  });
   if(!allSigs.length){toast('No se pudo preparar ninguna zona de firma');ld(false);return;}
   var first=allSigs[0];
   sbPatch('signers',signSigner.id,{
@@ -1192,32 +1279,35 @@ function useSig(type){
   var url;
   if(type==='draw'){url=trimCanvas(document.getElementById('sigpad'));if(!url){toast('Dibuja tu firma primero');return;}}
   else{var t=document.getElementById('sigtxt').value.trim();if(!t){toast('Escribe tu firma');return;}var tc=document.createElement('canvas');tc.width=300;tc.height=90;var tctx=tc.getContext('2d');tctx.clearRect(0,0,300,90);tctx.font='bold 52px serif';tctx.fillStyle=drawColor;tctx.textBaseline='middle';tctx.fillText(t,8,45);url=tc.toDataURL('image/png');}
-  signDataURL=url;
   var zones=getPresetZones();
-  if(zones.length){
-    var z=zones[0];
-    var idx=pdfIndexByPath(z.pdfPath);
-    var showFirstZone=function(){
-      signPage=Math.max(1,Math.min(z.page||1,signTotal||z.page||1));
-      renderSPage().then(function(){
-        var canvas=document.getElementById('scc');
-        var rect=canvas.getBoundingClientRect();
-        placeSticker(z.nx*rect.width,z.ny*rect.height,url,z.nw*rect.width,z.nh*rect.height);
-        document.getElementById('btn-ok').disabled=false;
-        toast(zones.length>1?'Firma preparada para '+zones.length+' zonas marcadas':'Firma colocada en la zona predefinida');
-      });
-    };
-    if(idx!==signPdfIdx||!signPdfDoc){
-      loadSPDF(idx).then(showFirstZone).catch(function(){});
-    }else{
-      showFirstZone();
-    }
-  } else {
-    signMode='pending';
-    document.getElementById('sc').style.cursor='crosshair';
-    toast('Haz clic en el PDF donde quieres colocar la firma');
+  if(!zones.length){
+    signDataURL=null;
+    document.getElementById('btn-ok').disabled=true;
+    toast('No hay zona de firma predefinida para este firmante. Revisa la configuracion del documento.');
+    return;
+  }
+  signDataURL=url;
+  signMode=null;
+  document.getElementById('sc').classList.remove('sign-ready');
+  signStickers=[];
+  var z=zones[0];
+  var idx=pdfIndexByPath(z.pdfPath);
+  var after=function(){
+    signPage=Math.max(1,Math.min(z.page||1,signTotal||z.page||1));
+    renderSPage().then(function(){
+      var pageBox=getSignPageBox(signPage);
+      if(pageBox)pageBox.scrollIntoView({behavior:'smooth',block:'center'});
+      document.getElementById('btn-ok').disabled=false;
+      toast(zones.length>1?'Firma preparada para '+zones.length+' zonas marcadas':'Firma preparada en la zona marcada');
+    });
+  };
+  if(idx!==signPdfIdx||!signPdfDoc){
+    loadSPDF(idx).then(after).catch(function(){});
+  }else{
+    after();
   }
 }
+
 </script>
 </body>
 </html>
