@@ -71,8 +71,16 @@ h2{font-family:'Playfair Display',serif;font-size:1.5rem;margin-bottom:6px}
 .docpick{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
 .docbtn{display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:8px;border:1.5px solid var(--border);background:#fff;color:var(--ink);font-size:.78rem;font-weight:600;cursor:pointer;max-width:100%}
 .docbtn.on{border-color:var(--amber);background:#fffbf4;color:var(--amber3)}
+.docbtn.seen{border-color:var(--green)}
+.docbtn .seenmark{margin-left:6px;color:var(--green);font-size:.72rem;font-weight:700;white-space:nowrap}
 .docbtn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:210px}
 .prevbox{background:#bbb;border-radius:8px;padding:8px;max-height:460px;overflow:auto;display:flex;justify-content:center}
+.docsummary{background:#fdfcfa;border:1px solid var(--cream);border-radius:8px;padding:10px 12px;margin-bottom:10px}
+.docsummary-title{font-size:.76rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.docsummary ul{margin:0 0 0 18px;padding:0;font-size:.82rem;line-height:1.55}
+.docsummary li{margin-bottom:2px}
+.docsummary-note{font-size:.76rem;color:var(--muted);margin-top:6px}
+.review-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
 .stk{position:absolute;cursor:default;pointer-events:none;border:2px solid rgba(21,128,61,.65);border-radius:4px;user-select:none;background:rgba(21,128,61,.08)}
 .stk:hover,.stk.sel{border-color:rgba(21,128,61,.65);border-radius:4px}
 .stk img{display:block;width:100%;height:100%;object-fit:contain}
@@ -112,7 +120,7 @@ h2{font-family:'Playfair Display',serif;font-size:1.5rem;margin-bottom:6px}
 </head>
 <body>
 <header>
-  <div><div class="logo">Firma<b>Hogar</b></div><div class="logo-s">Firma electronica eIDAS</div></div>
+  <div><div class="logo">Firma<b>Hogar</b></div><div class="logo-s">Firma electronica simple con evidencias</div></div>
   <div class="sp"></div>
   <button class="btn bg" id="btn-home" style="display:none;color:#aaa" onclick="goHome()">Inicio</button>
 </header>
@@ -223,8 +231,8 @@ h2{font-family:'Playfair Display',serif;font-size:1.5rem;margin-bottom:6px}
     <div class="card"><div class="ch">Enviar por WhatsApp</div><div class="cb" id="det-links"></div></div>
   </div>
   <div class="card">
-    <div class="ch">Registro de auditoria eIDAS</div>
-    <div class="cb"><p style="font-size:.78rem;color:var(--muted);margin-bottom:8px">Evidencias: nombre, DNI, IP, timestamp, consentimiento y hash SHA-256 del documento.</p><div id="aud-tbl"></div><button class="btn bo sm" style="margin-top:8px" onclick="dlAudit()">Descargar log (.txt)</button></div>
+    <div class="ch">Registro de auditoria de firma</div>
+    <div class="cb"><p style="font-size:.78rem;color:var(--muted);margin-bottom:8px">Evidencias: identidad declarada, DNI/NIE, IP, fecha/hora, aceptación expresa, documentos asociados y hash SHA-256 del documento original.</p><div id="aud-tbl"></div><button class="btn bo sm" style="margin-top:8px" onclick="dlAudit()">Descargar registro (.txt)</button></div>
   </div>
   <div class="card"><div class="ch">Descargar PDFs</div><div class="cb" id="det-dl"></div></div>
   <div class="card" id="det-reminder" style="display:none">
@@ -244,6 +252,10 @@ h2{font-family:'Playfair Display',serif;font-size:1.5rem;margin-bottom:6px}
       <div id="sign-id">
         <div class="fld"><label>Tu nombre completo *</label><input type="text" id="sign-name" placeholder="Nombre y apellidos"></div>
         <div class="fld"><label>DNI / NIE *</label><input type="text" id="sign-dni" placeholder="Ej: 12345678A"></div>
+        <div id="sign-doc-summary" class="docsummary" style="display:none"></div>
+        <div class="review-actions" id="sign-review-actions" style="display:none">
+          <button type="button" class="btn bo sm" onclick="scrollToDocs()">Ver documentos</button>
+        </div>
         <div id="sign-preview-wrap" style="margin-bottom:12px;display:none">
           <div style="font-size:.76rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Archivos que vas a firmar</div>
           <div id="sign-file-list" class="docpick"></div>
@@ -252,9 +264,9 @@ h2{font-family:'Playfair Display',serif;font-size:1.5rem;margin-bottom:6px}
           </div>
           <div id="prev-pg" style="font-size:.76rem;color:var(--muted);margin-top:6px;text-align:center">Selecciona un archivo para leerlo completo con scroll.</div>
         </div>
-        <div class="legal"><strong>Firma electronica simple - Reglamento eIDAS (UE 910/2014)</strong><br><br>Al firmar confirmas tu identidad y aceptas el contenido. Validez legal conforme al Reglamento UE 910/2014 (eIDAS) y Ley 6/2020. Se registrara: nombre, DNI, IP y timestamp.<br><br><strong>Proteccion de Datos (RGPD)</strong> - Responsable: AsisteHogar (Petra Borondo Martin). Finalidad: gestion de contratos laborales. Conservacion: vigencia relacion laboral + 5 anos. Derechos: acceso, rectificacion, supresion. Reclamaciones: AEPD (aepd.es).</div>
-        <div class="con"><input type="checkbox" id="sc1"><label for="sc1"><strong>Consentimiento firma eIDAS:</strong> He leido el documento, acepto firmarlo electronicamente y consiento el registro de mis datos de firma como evidencia legal.</label></div>
-        <div class="con"><input type="checkbox" id="sc2"><label for="sc2"><strong>Proteccion de datos:</strong> He sido informado sobre el tratamiento de mis datos conforme al RGPD (UE 2016/679) y LOPDGDD y consiento el tratamiento indicado.</label></div>
+        <div class="legal"><strong>Firma electronica simple con evidencias - Reglamento eIDAS (UE 910/2014)</strong><br><br>Este sistema recoge una firma electronica simple. No es una firma electronica cualificada ni sustituye a un certificado cualificado. Al confirmar, quedaran asociadas al documento las evidencias disponibles: identidad declarada, DNI/NIE, fecha y hora, IP, consentimiento de firma, documentos asociados y hash SHA-256 del documento original.<br><br><strong>Proteccion de Datos (RGPD)</strong> - Responsable: AsisteHogar (Petra Borondo Martin). Finalidad: gestion, formalizacion, conservacion y prueba de la firma electronica de documentacion laboral o contractual. Base juridica: ejecucion de la relacion contractual y/o cumplimiento de obligaciones legales aplicables, segun proceda. Conservacion: durante la vigencia de la relacion y los plazos legales de conservacion o reclamacion. Derechos: acceso, rectificacion, supresion, oposicion, limitacion y portabilidad cuando proceda. Reclamaciones: AEPD (aepd.es).</div>
+        <div class="con"><input type="checkbox" id="sc1"><label for="sc1"><strong>Aceptacion de firma electronica:</strong> Declaro que he tenido acceso a todos los documentos asociados, que puedo revisarlos en esta pantalla, que acepto su contenido y que deseo firmarlos electronicamente mediante este sistema de firma electronica simple con evidencias.</label></div>
+        <div class="con"><input type="checkbox" id="sc2"><label for="sc2"><strong>Informacion de proteccion de datos:</strong> He sido informado del tratamiento de mis datos personales necesario para gestionar, formalizar, conservar y acreditar esta firma electronica, conforme al RGPD (UE 2016/679) y la LOPDGDD.</label></div>
         <button class="btn bp" style="width:100%" onclick="startSign()">Continuar a la firma →</button>
       </div>
       <div id="sign-fsel" style="display:none;margin-top:10px">
@@ -346,7 +358,29 @@ async function sha256(buffer){
 }
 
 // PDF PREVIEW in sign view
-var prevPdfDoc=null,prevFileIdx=0,prevTotal=1,prevRenderRun=0;
+var prevPdfDoc=null,prevFileIdx=0,prevTotal=1,prevRenderRun=0,viewedFiles={};
+function renderDocSummary(){
+  var el=document.getElementById('sign-doc-summary');
+  var actions=document.getElementById('sign-review-actions');
+  if(!el||!signPaths.length)return;
+  var items=signPaths.map(function(p,i){
+    var nm=escHtml((signNames&&signNames[i])?signNames[i]:'Documento '+(i+1));
+    var seen=viewedFiles[i]?' <span style="color:var(--green);font-weight:700">(visto)</span>':'';
+    return '<li>'+nm+seen+'</li>';
+  }).join('');
+  el.style.display='';
+  if(actions)actions.style.display='flex';
+  el.innerHTML='<div class="docsummary-title">Resumen de documentos incluidos</div><ul>'+items+'</ul><div class="docsummary-note">La firma se aplicara automaticamente en las zonas definidas por AsisteHogar. No tienes que colocarla manualmente. Este sistema genera una firma electronica simple con evidencias.</div>';
+}
+function scrollToDocs(){
+  var el=document.getElementById('sign-preview-wrap');
+  if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function markPreviewViewed(idx){
+  viewedFiles[idx]=true;
+  renderDocSummary();
+  renderPreviewFiles();
+}
 function renderPreviewFiles(){
   var wrap=document.getElementById('sign-preview-wrap');
   var list=document.getElementById('sign-file-list');
@@ -354,13 +388,16 @@ function renderPreviewFiles(){
   wrap.style.display='';
   list.innerHTML=signPaths.map(function(p,i){
     var nm=escHtml((signNames&&signNames[i])?signNames[i]:'Documento '+(i+1));
-    return '<button type="button" class="docbtn'+(i===prevFileIdx?' on':'')+'" onclick="loadPreview('+i+')"><span>📄 '+nm+'</span></button><a class="btn bo sm" href="'+pubURL(p)+'" target="_blank" rel="noopener">Abrir</a>';
+    var cls='docbtn'+(i===prevFileIdx?' on':'')+(viewedFiles[i]?' seen':'');
+    var seen=viewedFiles[i]?'<span class="seenmark">Visto</span>':'';
+    return '<button type="button" class="'+cls+'" onclick="loadPreview('+i+')"><span>📄 '+nm+'</span>'+seen+'</button><a class="btn bo sm" href="'+pubURL(p)+'" target="_blank" rel="noopener" onclick="markPreviewViewed('+i+')">Abrir</a>';
   }).join('');
 }
 function loadPreview(idx){
   if(typeof idx!=='number')idx=0;
   if(!signPaths[idx])return;
   prevFileIdx=idx;prevRenderRun++;
+  viewedFiles[idx]=true;
   var run=prevRenderRun;
   renderPreviewFiles();
   var cont=document.getElementById('prev-cont');
@@ -421,7 +458,7 @@ function drawStamp(page, signers){
   var darkGreen=PDFLib.rgb(0.1,0.4,0.15);
   var textGreen=PDFLib.rgb(0.2,0.3,0.2);
   page.drawRectangle({x:stampX,y:stampY,width:stampW,height:stampH,color:lightGreen,borderColor:green,borderWidth:0.5});
-  page.drawText('DOCUMENTO FIRMADO ELECTRONICAMENTE - eIDAS (UE 910/2014)',{x:stampX+4,y:stampY+stampH-10,size:5.5,color:darkGreen});
+  page.drawText('DOCUMENTO FIRMADO ELECTRONICAMENTE - FIRMA ELECTRONICA SIMPLE CON EVIDENCIAS',{x:stampX+4,y:stampY+stampH-10,size:5.5,color:darkGreen});
   signed.forEach(function(s,i){
     var txt='Firmante: '+(s.signed_fullname||s.name)+' | DNI: '+(s.signer_dni||'-')+' | Fecha: '+new Date(s.signed_at).toLocaleString('es-ES')+' | IP: '+(s.signer_ip||'-');
     page.drawText(txt,{x:stampX+4,y:stampY+stampH-20-(i*12),size:5,color:textGreen});
@@ -667,12 +704,33 @@ function addSigner(){
   document.getElementById('slist').appendChild(d);
   zonaUpdate();
 }
+function buildCreateWarnings(sData){
+  var warnings=[];
+  var zKeys=Object.keys(zonas);
+  sData.forEach(function(s){
+    var hasZone=zKeys.some(function(k){var key=k.split('|')[0];return key===s.sid||key===s.name;});
+    if(!hasZone)warnings.push('El firmante "'+s.name+'" no tiene zona de firma definida.');
+    if(!s.dni)warnings.push('El firmante "'+s.name+'" no tiene DNI/NIE esperado cargado.');
+    else if(typeof isValidDniNie==='function'&&!isValidDniNie(s.dni))warnings.push('El DNI/NIE esperado de "'+s.name+'" no parece valido.');
+    if(!s.phone)warnings.push('El firmante "'+s.name+'" no tiene telefono de WhatsApp.');
+  });
+  pdfFiles.forEach(function(f,i){
+    var hasPdfZone=zKeys.some(function(k){return parseInt(k.split('|')[1],10)===i;});
+    if(!hasPdfZone)warnings.push('El PDF "'+f.name+'" no tiene ninguna zona de firma.');
+  });
+  return warnings;
+}
 function crearDoc(){
   var title=document.getElementById('dtitle').value.trim();
   if(!title){toast('Escribe un titulo');return;}
   if(!pdfFiles.length){toast('Sube al menos un PDF');return;}
   var sData=getSignerRows().map(function(sr){var i=sr.input.id.replace('sn-','');return{sid:sr.sid,name:sr.name,dni:(document.getElementById('sd-'+i)||{}).value||'',phone:(document.getElementById('sp-'+i)||{}).value||''};}).filter(function(s){return s.name;});
   if(!sData.length){toast('Añade al menos un firmante');return;}
+  var warnings=buildCreateWarnings(sData);
+  if(warnings.length){
+    var msg='Avisos antes de generar enlaces:\n\n- '+warnings.join('\n- ')+'\n\nPuedes continuar, pero revisalo si no era intencionado.';
+    if(!confirm(msg))return;
+  }
   var cat=document.getElementById('dcat').value;
   var expAt=new Date(Date.now()+parseInt(document.getElementById('dexp').value)*86400000).toISOString();
   ld(true);
@@ -748,13 +806,14 @@ function verDet(id){
   Promise.all([sbGet('documents','?id=eq.'+id),sbGet('signers','?document_id=eq.'+id+'&order=name.asc')]).then(function(r){
     curDoc=r[0][0];curSigs=Array.isArray(r[1])?r[1]:[];
     document.getElementById('det-tit').textContent=curDoc.title;
-    document.getElementById('det-meta').textContent='Creado el '+new Date(curDoc.created_at).toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'})+(curDoc.category?' · '+curDoc.category:'');
+    var expTxt=curDoc.expires_at?' · Enlace valido hasta '+new Date(curDoc.expires_at).toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'}):'';
+    document.getElementById('det-meta').textContent='Creado el '+new Date(curDoc.created_at).toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'})+(curDoc.category?' · '+curDoc.category:'')+expTxt;
     document.getElementById('det-sigs').innerHTML=curSigs.map(function(s){
       return'<div class="ss'+(s.signed_at?' ok':'')+'"><span>'+(s.signed_at?'✅':'⏳')+'</span><span class="ss-n">'+s.name+'</span><span class="ss-t">'+(s.signed_at?new Date(s.signed_at).toLocaleString('es-ES'):'Pendiente')+'</span></div>';
     }).join('');
     document.getElementById('det-links').innerHTML=curSigs.map(function(s){
       var link=BASE+'?token='+s.token;
-      var msg=encodeURIComponent('Hola '+s.name+', te envío el documento "'+curDoc.title+'" para que lo firmes digitalmente.\n\n📋 PASOS:\n1. Abre el enlace\n2. Escribe tu nombre completo y DNI/NIE\n3. Acepta los dos consentimientos\n4. Pulsa "Continuar a la firma"\n5. En el panel derecho dibuja tu firma o escríbela\n6. Pulsa "Usar"\n7. La firma se colocará automáticamente en tu zona\n8. Pulsa "Confirmar firma"\n\n🔗 Enlace: '+link+'\n\nEste enlace es personal e intransferible.');
+      var msg=encodeURIComponent('Hola '+s.name+', te envío el documento "'+curDoc.title+'" para que lo firmes electronicamente.\n\n📋 PASOS:\n1. Abre el enlace\n2. Escribe tu nombre completo y DNI/NIE\n3. Marca las dos casillas de aceptacion e informacion\n4. Pulsa "Continuar a la firma"\n5. En el panel derecho dibuja tu firma o escríbela\n6. Pulsa "Usar"\n7. La firma se colocara automaticamente en la zona definida previamente\n8. Pulsa "Confirmar firma"\n\n🔗 Enlace: '+link+'\n\nEste enlace es personal e intransferible.');
       var href=s.phone?'https://wa.me/'+s.phone.replace(/\D/g,'')+'?text='+msg:'https://wa.me/?text='+msg;
       return'<div style="margin-bottom:10px"><div style="font-size:.76rem;font-weight:600;color:var(--muted);margin-bottom:4px">'+s.name+(s.signed_at?' <span class="badge b-d">Firmado</span>':'')+'</div><div class="lbox">'+link+'<button class="lcopy" onclick="cp(\''+link+'\')">Copiar</button></div><a href="'+href+'" target="_blank" class="btn bwa sm">WhatsApp</a> <a href="'+href+'" target="_blank" class="btn bo sm" style="margin-left:4px">Reenviar recordatorio</a></div>';
     }).join('');
@@ -781,7 +840,7 @@ function dlAudit(){
   var signed=curSigs.filter(function(s){return s.signed_at;});
   if(!signed.length){toast('No hay firmas aun');return;}
   var txt='REGISTRO DE AUDITORIA FIRMAHOGAR\n';
-  txt+='Reglamento UE 910/2014 (eIDAS) - Ley 6/2020\n';
+  txt+='Firma electronica simple con evidencias - Reglamento UE 910/2014 (eIDAS)\n';
   txt+='Documento: '+curDoc.title+'\n';
   txt+='Generado: '+new Date().toLocaleString('es-ES')+'\n';
   var hashes=curDoc.pdf_hashes||[];
@@ -789,6 +848,7 @@ function dlAudit(){
     txt+='\nHASH SHA-256 DEL DOCUMENTO ORIGINAL:\n';
     hashes.forEach(function(h,i){txt+=(curDoc.pdf_names&&curDoc.pdf_names[i]?curDoc.pdf_names[i]:'Doc '+(i+1))+': '+h+'\n';});
   }
+  txt+='\nNota: este registro documenta evidencias de una firma electronica simple. No equivale por si solo a una firma electronica cualificada.\n';
   txt+='\n'+'-'.repeat(50)+'\n\n';
   signed.forEach(function(s){txt+='Firmante: '+(s.signed_fullname||s.name)+'\nDNI: '+(s.signer_dni||'-')+'\nFecha: '+new Date(s.signed_at).toLocaleString('es-ES')+'\nIP: '+(s.signer_ip||'-')+'\neIDAS: '+(s.consented?'SI':'NO')+'\nRGPD: '+(s.privacy_accepted?'SI':'NO')+'\n\n';});
   var blob=new Blob([txt],{type:'text/plain;charset=utf-8'});
@@ -930,6 +990,42 @@ function placementFromRecord(st,fallbackPdfPath,fallbackUrl){
   return{page:z.page,pdfPath:z.pdfPath,x:z.nx,y:z.ny,w:z.nw,h:z.nh,url:st.url||fallbackUrl,normalized:true};
 }
 
+function normDniNie(v){
+  return String(v||'').toUpperCase().replace(/[^0-9A-Z]/g,'');
+}
+function isValidDniNie(v){
+  var id=normDniNie(v);
+  var letters='TRWAGMYFPDXBNJZSQVHLCKE';
+  var num,letter;
+  if(/^\d{8}[A-Z]$/.test(id)){
+    num=parseInt(id.slice(0,8),10);letter=id.slice(8);
+    return letters[num%23]===letter;
+  }
+  if(/^[XYZ]\d{7}[A-Z]$/.test(id)){
+    var first={X:'0',Y:'1',Z:'2'}[id[0]];
+    num=parseInt(first+id.slice(1,8),10);letter=id.slice(8);
+    return letters[num%23]===letter;
+  }
+  return false;
+}
+function showSignUnavailable(title,msg){
+  document.getElementById('sign-tit').textContent=title;
+  document.getElementById('sign-info').innerHTML=msg;
+  var signId=document.getElementById('sign-id');if(signId)signId.style.display='none';
+  var ws=document.getElementById('sign-ws');if(ws)ws.style.display='none';
+  var fsel=document.getElementById('sign-fsel');if(fsel)fsel.style.display='none';
+}
+function showAlreadySigned(){
+  showV('ok');
+  var h=document.querySelector('#v-ok h2');if(h)h.textContent='Documento ya firmado';
+  var p=document.querySelector('#v-ok .sub');
+  if(p){
+    var when=signSigner&&signSigner.signed_at?new Date(signSigner.signed_at).toLocaleString('es-ES'):'fecha registrada';
+    p.textContent='Este enlace ya fue utilizado. Firma registrada el '+when+'.';
+  }
+  checkAllSigned();
+}
+
 function initSign(token){
   showV('sign');ld(true);
   // Hide home button completely for signers - they should not access admin panel
@@ -939,21 +1035,22 @@ function initSign(token){
   sbGet('signers','?token=eq.'+token).then(function(res){
     if(!res.length){toast('Enlace no valido');ld(false);return;}
     signSigner=res[0];
-    if(signSigner.signed_at){showV('ok');checkAllSigned();ld(false);return;}
+    if(signSigner.signed_at){showAlreadySigned();ld(false);return;}
     return sbGet('documents','?id=eq.'+signSigner.document_id).then(function(d){
       signDocData=d[0];
       if(signDocData.expires_at&&new Date(signDocData.expires_at)<new Date()){
-        document.getElementById('sign-tit').textContent='Enlace caducado';
-        document.getElementById('sign-info').innerHTML='Este enlace ha caducado. Contacta con AsisteHogar.';
+        showSignUnavailable('Enlace caducado','Este enlace ha caducado el '+new Date(signDocData.expires_at).toLocaleString('es-ES')+'. Contacta con AsisteHogar para solicitar un nuevo enlace.');
         ld(false);return;
       }
       document.getElementById('sign-tit').textContent=signDocData.title;
-      document.getElementById('sign-info').innerHTML='Estas a punto de firmar el documento <b>"'+signDocData.title+'"</b>. Puedes revisar el documento completo antes de firmar.';
+      document.getElementById('sign-info').innerHTML='Estas a punto de firmar electronicamente <b>"'+signDocData.title+'"</b> mediante firma electronica simple con evidencias. Puedes revisar todos los archivos incluidos antes de confirmar. La firma se colocara automaticamente en las zonas ya definidas.';
       document.getElementById('sign-name').value=signSigner.name;
       signPaths=signDocData.pdf_paths||[signDocData.pdf_path];
       signNames=signDocData.pdf_names||signPaths.map(function(_,i){return'Documento '+(i+1);});
       // Load all signer-visible PDF options and the first complete scroll preview
+      viewedFiles={};
       prevFileIdx=0;
+      renderDocSummary();
       renderPreviewFiles();
       loadPreview(0);
       return getIP().then(function(ip){signerIP=ip;ld(false);});
@@ -966,14 +1063,15 @@ function startSign(){
   var dni=document.getElementById('sign-dni').value.trim();
   if(!name){toast('Escribe tu nombre completo');return;}
   if(!dni){toast('El DNI/NIE es obligatorio');return;}
-  // Verify DNI if expected DNI was set
+  if(!isValidDniNie(dni)){toast('El DNI/NIE no parece valido. Revisa el numero y la letra.');return;}
+  // Verify DNI/NIE if expected DNI/NIE was set
   if(signSigner.signer_expected_dni){
-    var expected=signSigner.signer_expected_dni.trim().toUpperCase().replace(/[-\s]/g,'');
-    var provided=dni.trim().toUpperCase().replace(/[-\s]/g,'');
+    var expected=normDniNie(signSigner.signer_expected_dni);
+    var provided=normDniNie(dni);
     if(expected!==provided){toast('El DNI/NIE no coincide con el registrado. Contacta con AsisteHogar.');return;}
   }
   if(!document.getElementById('sc1').checked){toast('Acepta el consentimiento de firma');return;}
-  if(!document.getElementById('sc2').checked){toast('Acepta la politica de datos');return;}
+  if(!document.getElementById('sc2').checked){toast('Confirma que has recibido la informacion de proteccion de datos');return;}
   document.getElementById('sign-id').style.display='none';
   document.getElementById('sign-ws').style.display='';
   if(signPaths.length>1){
