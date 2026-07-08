@@ -801,6 +801,14 @@ function crearDoc(){
 
 // DETALLE
 var curDoc=null,curSigs=[];
+function waPhone(phone){
+  if(!phone)return'';
+  var d=phone.replace(/\D/g,'');
+  if(!d)return'';
+  if(d.length===11&&d.slice(0,2)==='34')return d;
+  if(d.length===9)return'34'+d;
+  return d;
+}
 function verDet(id){
   showV('det');ld(true);
   Promise.all([sbGet('documents','?id=eq.'+id),sbGet('signers','?document_id=eq.'+id+'&order=name.asc')]).then(function(r){
@@ -814,7 +822,7 @@ function verDet(id){
     document.getElementById('det-links').innerHTML=curSigs.map(function(s){
       var link=BASE+'?token='+s.token;
       var msg=encodeURIComponent('Hola '+s.name+', te envío el documento "'+curDoc.title+'" para que lo firmes electronicamente.\n\n📋 PASOS:\n1. Abre el enlace\n2. Escribe tu nombre completo y DNI/NIE\n3. Marca las dos casillas de aceptacion e informacion\n4. Pulsa "Continuar a la firma"\n5. En el panel derecho dibuja tu firma o escríbela\n6. Pulsa "Usar"\n7. La firma se colocara automaticamente en la zona definida previamente\n8. Pulsa "Confirmar firma"\n\n🔗 Enlace: '+link+'\n\nEste enlace es personal e intransferible.');
-      var href=s.phone?'https://wa.me/'+s.phone.replace(/\D/g,'')+'?text='+msg:'https://wa.me/?text='+msg;
+      var href=s.phone?'https://wa.me/'+waPhone(s.phone)+'?text='+msg:'https://wa.me/?text='+msg;
       return'<div style="margin-bottom:10px"><div style="font-size:.76rem;font-weight:600;color:var(--muted);margin-bottom:4px">'+s.name+(s.signed_at?' <span class="badge b-d">Firmado</span>':'')+'</div><div class="lbox">'+link+'<button class="lcopy" onclick="cp(\''+link+'\')">Copiar</button></div><a href="'+href+'" target="_blank" class="btn bwa sm">WhatsApp</a> <a href="'+href+'" target="_blank" class="btn bo sm" style="margin-left:4px">Reenviar recordatorio</a></div>';
     }).join('');
     var signed=curSigs.filter(function(s){return s.signed_at;});
@@ -828,7 +836,7 @@ function verDet(id){
     var remEl=document.getElementById('det-reminder');
     if(pending.length&&days>2){
       remEl.style.display='';
-      document.getElementById('det-reminder-body').innerHTML='<p style="font-size:.82rem;margin-bottom:10px">Llevan <b>'+Math.floor(days)+'</b> dias sin firmar:</p>'+pending.map(function(s){var link=BASE+'?token='+s.token;var msg=encodeURIComponent('Recordatorio: Hola '+s.name+', aun tienes pendiente firmar el documento "'+curDoc.title+'".\n\n Enlace: '+link);var href=s.phone?'https://wa.me/'+s.phone.replace(/\D/g,'')+'?text='+msg:'https://wa.me/?text='+msg;return'<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><span style="flex:1;font-size:.86rem;font-weight:500">'+s.name+'</span><a href="'+href+'" target="_blank" class="btn bwa sm">Recordatorio WhatsApp</a></div>';}).join('');
+      document.getElementById('det-reminder-body').innerHTML='<p style="font-size:.82rem;margin-bottom:10px">Llevan <b>'+Math.floor(days)+'</b> dias sin firmar:</p>'+pending.map(function(s){var link=BASE+'?token='+s.token;var msg=encodeURIComponent('Recordatorio: Hola '+s.name+', aun tienes pendiente firmar el documento "'+curDoc.title+'".\n\n Enlace: '+link);var href=s.phone?'https://wa.me/'+waPhone(s.phone)+'?text='+msg:'https://wa.me/?text='+msg;return'<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><span style="flex:1;font-size:.86rem;font-weight:500">'+s.name+'</span><a href="'+href+'" target="_blank" class="btn bwa sm">Recordatorio WhatsApp</a></div>';}).join('');
     } else { remEl.style.display='none'; }
     var ps=curDoc.pdf_paths||[curDoc.pdf_path];var ns=curDoc.pdf_names||ps.map(function(_,i){return'Doc '+(i+1);});
     document.getElementById('det-dl').innerHTML=ps.map(function(p,i){
